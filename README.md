@@ -11,12 +11,13 @@ goals:
         - introduction of new name for same value (`DB_SECRETS -> DATABASE_SECRETS`)
         - and deprecation of old name (managing deletion of old `DB_SECRETS` references)
 
-aims to support:
+scope of support:
 
 - microservice configuration
-- viper package
-- sops secrets
-- docker env configs
+- parse YAML manifests
+- valid [viper package](https://github.com/spf13/viper) input
+- [SOPS secret management](https://github.com/mozilla/sops)
+- [docker-compose](https://github.com/docker/compose) YAML env config scheme
 
 ## subcommands
 
