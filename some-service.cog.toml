@@ -6,18 +6,15 @@ env = 'docker'
 
 [[cfg.plain]]
 [cfg.plain.var]
-name = 'var_name'
 value = 'var_value'
 
 [[cfg.plain]]
 [cfg.plain.other_var]
-name = 'other_var_name'
 value = 'other_var_value'
 
-# cfg.enc & cfg.plain idicates the division between plaintext configs and encrypted ones
+# cfg.enc & cfg.plain indicates the division between plaintext configs and encrypted ones
 [[cfg.enc]]
 [cfg.enc.enc_var]
-name = 'enc_var_name'
 path = 'path/to/file.enc.yaml'
 
 [[cfg]]
@@ -25,14 +22,12 @@ env = 'qa'
 
 [[cfg.plain]]
 [cfg.plain.var]
-name = 'var_name'
-# path and value should be mutually exclusive?
-# ergo: if value is provided, can path be allowed to be defined?
+name = 'VAR_NAME'
 path = 'path/to/qa/prefs.yaml'
 # traverse 'path/to/qa/file.enc.yaml' in yq style if file is not a flat structure:
 sub_path = '.config.enc_var_name'
 
 [[cfg.enc]]
 [cfg.enc.enc_var]
-name = 'enc_var_name'
+name = 'ENC_VAR_NAME'
 path = 'path/to/qa/file.enc.yaml'

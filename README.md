@@ -11,3 +11,10 @@ goals:
         - introduction of new name for same value (`DB_SECRETS -> DATABASE_SECRETS`)
         - and deprecation of old name (managing deletion of old `DB_SECRETS` references)
         - ex draft command: `cogs migrate --commit DB_SECRETS DATABASE_SECRETS`
+
+aims to support:
+
+- microservice configuration
+- viper package
+- sops secrets
+- docker env configs
