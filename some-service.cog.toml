@@ -1,4 +1,4 @@
-service_name = 'service_name'
+service_name = 'some_service'
 
 # https://toml.io/en/v1.0.0-rc.1#section-18
 [[cfg]]
