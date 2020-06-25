@@ -20,11 +20,15 @@ aims to support:
 
 ## subcommands
 
-### `cogs generatel <env_name> ./service-name.cog.yaml`
+### `cogs generate`
+* `cogs generate <env_name> ./service-name.cog.yaml [--out=(json|toml)]`
 - outputs a flat JSON/TOML K:V array
 
 ### `cogs migrate`
-Aims to allow a gradual and automated migration of variable names without impacting sensitive environments
+* `cogs migrate <OLD_KEY_NAME> <NEW_KEY_NAME> [<envs>...]`
+* `cogs migrate --commit <OLD_KEY_NAME> <NEW_KEY_NAME> (<envs>...)`
+
+Aims to allow a gradual and automated migration of key names without risking sensitive environments
 
 ```yaml
 # config.enc.yaml pre migration
@@ -34,7 +38,7 @@ DB_SECRETS: "secret_pw"
 Should happen in two main steps: 
 1. `cogs migrate DB_SECRETS DATABASE_SECRETS`
 - should default to creating the new key name in all environments
-- creates new variable in file
+- creates new variable in remote file or cog manifest
 
 ```yaml
 DB_SECRETS: "secret_pw"
