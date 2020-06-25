@@ -1,4 +1,4 @@
-# COGS: COnfiguration manaGement S.
+# COGS: COnfiguration manaGement S
 
 goals:
 
