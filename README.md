@@ -10,7 +10,6 @@ goals:
     * allow a gradual introduction of new variable names by automating:
         - introduction of new name for same value (`DB_SECRETS -> DATABASE_SECRETS`)
         - and deprecation of old name (managing deletion of old `DB_SECRETS` references)
-        - ex draft command: `cogs migrate --commit DB_SECRETS DATABASE_SECRETS`
 
 aims to support:
 
@@ -18,3 +17,35 @@ aims to support:
 - viper package
 - sops secrets
 - docker env configs
+
+## subcommands
+
+### `cogs generatel <env_name> ./service-name.cog.yaml`
+- outputs a flat JSON/TOML K:V array
+
+### `cogs migrate`
+Aims to allow a gradual and automated migration of variable names without impacting sensitive environments
+
+```yaml
+# config.enc.yaml pre migration
+DB_SECRETS: "secret_pw"
+```
+
+Should happen in two main steps: 
+1. `cogs migrate DB_SECRETS DATABASE_SECRETS`
+- should default to creating the new key name in all environments
+- creates new variable in file
+
+```yaml
+DB_SECRETS: "secret_pw"
+DATABASE_SECRETS: "secret_pw"
+
+2. `cogs migrate --commit DB_SECRETS DATABASE_SECRETS <env>...`
+- removes old key name  for all `<envs>` specified
+
+```yaml
+# config.enc.yaml pre migration
+DATABASE_SECRETS: "secret_pw"
+```
+
+* should apply to plaintext K/Vs and SOPS encrypted values
