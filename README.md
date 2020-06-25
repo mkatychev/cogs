@@ -15,7 +15,7 @@ scope of support:
 
 - microservice configuration
 - parse YAML manifests
-- valid [viper package](https://github.com/spf13/viper) input
+- valid [viper package](https://github.com/spf13/viper) input (so able to output TOML & JSON)
 - [SOPS secret management](https://github.com/mozilla/sops)
 - [docker-compose](https://github.com/docker/compose) YAML env config scheme
 
