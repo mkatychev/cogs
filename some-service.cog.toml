@@ -23,7 +23,7 @@ path = 'path/to/file.enc.yaml'
 [[qa.cfg]]
 [qa.cfg.var]
 name = 'VAR_NAME'
-path = 'path/to/qa/prefs.yaml'o
+path = 'path/to/qa/prefs.yaml'
 
 # traverse 'path/to/qa/prefs.yaml' in yq style if file is not a flat structure looking for VAR_NAME key name:
 sub_path = 'config.key'
