@@ -1,33 +1,33 @@
 service_name = 'some_service'
 
 # https://toml.io/en/v1.0.0-rc.1#section-18
-[[cfg]]
-env = 'docker'
+# env = 'docker'
+[[docker]]
 
-[[cfg.plain]]
-[cfg.plain.var]
+[[docker.cfg]]
+[docker.cfg.var]
 value = 'var_value'
 
-[[cfg.plain]]
-[cfg.plain.other_var]
+[[docker.cfg]]
+[docker.cfg.other_var]
 value = 'other_var_value'
 
-# cfg.enc & cfg.plain indicates the division between plaintext configs and encrypted ones
-[[cfg.enc]]
-[cfg.enc.enc_var]
+# docker.enc & docker.cfg indicates the division between cfgtext configs and encrypted ones
+[[docker.enc]]
+[docker.enc.enc_var]
 path = 'path/to/file.enc.yaml'
 
-[[cfg]]
-env = 'qa'
+# env = 'qa'
+[[qa]]
 
-[[cfg.plain]]
-[cfg.plain.var]
+[[qa.cfg]]
+[qa.cfg.var]
 name = 'VAR_NAME'
 path = 'path/to/qa/prefs.yaml'
 # traverse 'path/to/qa/file.enc.yaml' in yq style if file is not a flat structure:
 sub_path = '.config.enc_var_name'
 
-[[cfg.enc]]
-[cfg.enc.enc_var]
+[[qa.enc]]
+[qa.enc.enc_var]
 name = 'ENC_VAR_NAME'
 path = 'path/to/qa/file.enc.yaml'

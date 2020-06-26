@@ -15,15 +15,15 @@ scope of support:
 
 - microservice configuration
 - parse YAML manifests
-- valid [viper package](https://github.com/spf13/viper) input (so able to output TOML & JSON)
+- valid [viper package](https://github.com/spf13/viper) input (so able to output JSON, YAML, and TOML)
 - [SOPS secret management](https://github.com/mozilla/sops)
 - [docker-compose](https://github.com/docker/compose) YAML env config scheme
 
 ## subcommands
 
 ### `cogs generate`
-* `cogs generate <env_name> ./service-name.cog.yaml [--out=(json|toml)]`
-- outputs a flat JSON/TOML K:V array
+* `cogs generate <env_name> ./service-name.cog.yaml [--out=(json|yaml|toml)]`
+- outputs a flat and serialized K:V array
 
 ### `cogs migrate`
 * `cogs migrate <OLD_KEY_NAME> <NEW_KEY_NAME> [<envs>...]`
