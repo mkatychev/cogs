@@ -12,7 +12,7 @@ value = 'var_value'
 [docker.cfg.other_var]
 value = 'other_var_value'
 
-# docker.enc & docker.cfg indicates the division between cfgtext configs and encrypted ones
+# docker.enc & docker.cfg indicates the division between plaintext configs and encrypted ones
 [[docker.enc]]
 [docker.enc.enc_var]
 path = 'path/to/file.enc.yaml'
@@ -23,9 +23,20 @@ path = 'path/to/file.enc.yaml'
 [[qa.cfg]]
 [qa.cfg.var]
 name = 'VAR_NAME'
-path = 'path/to/qa/prefs.yaml'
-# traverse 'path/to/qa/file.enc.yaml' in yq style if file is not a flat structure:
-sub_path = '.config.enc_var_name'
+path = 'path/to/qa/prefs.yaml'o
+
+# traverse 'path/to/qa/prefs.yaml' in yq style if file is not a flat structure looking for VAR_NAME key name:
+sub_path = 'config.key'
+# assumes config holds an associative array with a key name of VAR_NAME under 'config.key'
+# to grab the value from:
+#
+# prefs.yaml:
+# config:
+#   key:
+#     VAR_NAME: "var_value"
+#     OTHER_VAR_NAME: "other_var_value"
+
+
 
 [[qa.enc]]
 [qa.enc.enc_var]
