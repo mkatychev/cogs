@@ -32,7 +32,7 @@ scope of support:
 Aims to allow a gradual and automated migration of key names without risking sensitive environments
 
 ```yaml
-# config.enc.yaml pre migration
+# config.yaml pre migration
 DB_SECRETS: "secret_pw"
 ```
 
@@ -42,14 +42,16 @@ Should happen in two main steps:
 - creates new variable in remote file or cog manifest
 
 ```yaml
+# config.yaml during migration
 DB_SECRETS: "secret_pw"
 DATABASE_SECRETS: "secret_pw"
+```
 
 2. `cogs migrate --commit DB_SECRETS DATABASE_SECRETS <env>...`
 - removes old key name  for all `<envs>` specified
 
 ```yaml
-# config.enc.yaml pre migration
+# config.yaml post migration
 DATABASE_SECRETS: "secret_pw"
 ```
 
