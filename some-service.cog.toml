@@ -1,33 +1,17 @@
-service_name = 'some_service'
+name = "some_service"
 
-# https://toml.io/en/v1.0.0-rc.1#section-18
-# env = 'docker'
-[[docker]]
-
-[[docker.cfg]]
-[docker.cfg.var]
-value = 'var_value'
-
-[[docker.cfg]]
-[docker.cfg.other_var]
-value = 'other_var_value'
-
+[docker]
+var = "var_value"
+other_var = "other_var_value"
 # docker.enc & docker.cfg indicates the division between plaintext configs and encrypted ones
-[[docker.enc]]
-[docker.enc.enc_var]
-path = 'path/to/file.enc.yaml'
+[docker.enc]
+var.path = "path/to/file.enc.yaml"
 
-# env = 'qa'
-[[qa]]
-
-[[qa.cfg]]
-[qa.cfg.var]
-name = 'VAR_NAME'
-path = 'path/to/qa/prefs.yaml'
-
-# traverse 'path/to/qa/prefs.yaml' in yq style if file is not a flat structure looking for VAR_NAME key name:
-sub_path = 'config.key'
-# assumes config holds an associative array with a key name of VAR_NAME under 'config.key'
+[qa] 
+var.name = "VAR_NAME"
+# traverse "path/to/qa/prefs.yaml" in yq style if file is not a flat structure looking for VAR_NAME key name:
+var.path = [ "path/to/qa/prefs.yaml", "config.key" ]
+# assumes config holds an associative array with a key name of VAR_NAME under "config.key"
 # to grab the value from:
 #
 # prefs.yaml:
@@ -35,10 +19,36 @@ sub_path = 'config.key'
 #   key:
 #     VAR_NAME: "var_value"
 #     OTHER_VAR_NAME: "other_var_value"
+[qa.enc]
+enc_var.name = "ENC_VAR_NAME"
+enc_var.path = "path/to/qa/file.enc.yaml"
 
-
-
-[[qa.enc]]
-[qa.enc.enc_var]
-name = 'ENC_VAR_NAME'
-path = 'path/to/qa/file.enc.yaml'
+# {
+#   "name": [
+#     "some_service"
+#   ],
+#   "docker": {
+#     "other_var": "other_var_value",
+#     "var": "var_value",
+#     "enc": {
+#       "var": {
+#         "path": "path/to/file.enc.yaml"
+#       }
+#     }
+#   },
+#   "qa": {
+#     "enc": {
+#       "enc_var": {
+#         "name": "ENC_VAR_NAME",
+#         "path": "path/to/qa/file.enc.yaml"
+#       }
+#     },
+#     "var": {
+#       "name": "VAR_NAME",
+#       "path": [
+#         "path/to/qa/prefs.yaml",
+#         "config.key"
+#       ]
+#     }
+#   }
+# }

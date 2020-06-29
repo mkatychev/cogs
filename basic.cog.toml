@@ -1,0 +1,7 @@
+name = "some_service"
+
+[docker]
+var = "var_value"
+other_var = "other_var_value"
+[qa] 
+var = "VALUE"
