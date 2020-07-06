@@ -1,4 +1,4 @@
-name = "some_service"
+name = "some-service"
 
 [docker]
 var = "var_value"
@@ -7,7 +7,7 @@ other_var = "other_var_value"
 [docker.enc]
 var.path = "path/to/file.enc.yaml"
 
-[qa] 
+[qa]
 var.name = "VAR_NAME"
 # traverse "path/to/qa/prefs.yaml" in yq style if file is not a flat structure looking for VAR_NAME key name:
 var.path = [ "path/to/qa/prefs.yaml", "config.key" ]

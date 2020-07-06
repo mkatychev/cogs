@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -22,8 +23,11 @@ func main() {
 	opts.Bind(&conf)
 	switch {
 	case conf.Generate:
-		if err := cogs.Generate(conf.Env, conf.File); err != nil {
+		cfgMap, err := cogs.Generate(conf.Env, conf.File)
+		if err != nil {
 			panic(err)
 		}
+		output, _ := json.MarshalIndent(cfgMap, "", "\t")
+		fmt.Println(string(output))
 	}
 }

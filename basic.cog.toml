@@ -3,5 +3,7 @@ name = "some_service"
 [docker]
 var = "var_value"
 other_var = "other_var_value"
-[qa] 
-var = "VALUE"
+[qa]
+var.path = ["./path", ".subpath"]
+[qa.enc]
+enc_var.path = ["./path.enc", ".subpath"]
