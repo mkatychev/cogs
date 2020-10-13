@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"go.mozilla.org/sops/v3/decrypt"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func example() {

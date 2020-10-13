@@ -7,11 +7,12 @@ import (
 
 	"github.com/bestowinc/cogs"
 	"github.com/docopt/docopt-go"
+	logging "gopkg.in/op/go-logging.v1"
 )
 
 func main() {
 	usage := `Usage:
-  example generate <env> <cog-file>`
+  cogs generate <env> <cog-file>`
 
 	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.1")
 	var conf struct {
@@ -20,6 +21,8 @@ func main() {
 		File     string `docopt:"<cog-file>"`
 	}
 
+	logging.SetLevel(logging.WARNING, "yq")
+
 	opts.Bind(&conf)
 	switch {
 	case conf.Generate:
@@ -27,7 +30,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		output, _ := json.MarshalIndent(cfgMap, "", "\t")
+		output, _ := json.MarshalIndent(cfgMap, "", "  ")
 		fmt.Println(string(output))
 	}
 }

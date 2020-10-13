@@ -66,7 +66,7 @@ func TestGenerate(t *testing.T) {
 				t.Fatalf("toml.Load: %s", err)
 			}
 			cogName := tree.Get("name").(string)
-			config, err := generate(tc.env, tree)
+			config, err := generate(tc.env, tree, &testGear{})
 
 			if diff := cmp.Diff(tc.err, err, AllowUnexported); diff != "" {
 				t.Fatalf("toml[%s], env[%s]: (-expected error +actual error)\n-\t%s\n+\t%s", cogName, tc.env, tc.err, err)
@@ -104,3 +104,54 @@ var.path = ["./path", ".subpath", "err_index"]
 enc_var.path = ["./path.enc", ".subpath"]
 `
 )
+
+type testGear struct {
+	Name   string
+	cfgMap configMap
+}
+
+// SetName sets the gear name to the provided string
+func (g *testGear) SetName(name string) {
+	g.Name = name
+}
+
+// ResolveMap is used to satisfy the Generator interface
+func (g *testGear) ResolveMap(env RawEnv) (map[string]string, error) {
+	var err error
+
+	g.cfgMap, err = parseEnv(env)
+	if err != nil {
+		return nil, err
+	}
+
+	// final output
+	cfgOut := make(map[string]string)
+
+	for k, cfg := range g.cfgMap {
+		cfgOut[k] = g.ResolveValue(cfg)
+	}
+	return cfgOut, nil
+
+}
+
+// ResolveValue returns the value corresponding to a Cfg struct
+// if Path resolves to a valid file the file byte value
+// is passed to a file reader object, attempting to serialize the contents of
+// the file if type is supported
+func (g *testGear) ResolveValue(c *Cfg) string {
+	// if Path is empty or Value is non empty
+	if c.Path == "" || c.Value != "" {
+		return c.Value
+	}
+
+	if c.encrypted {
+		// decrypt.File(c.Path, c.SubPath)
+		return "|enc|" + c.Path
+	}
+
+	if c.SubPath != "" {
+		return "|path|" + c.Path + "|subpath|" + c.SubPath
+	}
+
+	return "|path|" + c.Path
+}
