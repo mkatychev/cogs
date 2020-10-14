@@ -1,6 +1,22 @@
 # COGS: COnfiguration manaGement S
 
-goals:
+## installing: 
+* clone this repo, `cd` into it
+* `go build -o $GOPATH/bin ./cmd/cogs`
+
+```
+COGS COnfiguration manaGement S
+
+Usage:
+  cogs generate <env> <cog-file> [--out=<type>]
+
+Options:
+  -h --help        Show this screen.
+  --version        Show version.
+  --output=<type>  Configuration output type [default: json].
+```
+
+## goals:
 
 1. Allow a flat style of managing configurations across disparate environments and different formats (plaintext vs. encrypted)
     * aggregates plaintext config values and SOPS secrets in one manifest
@@ -11,7 +27,7 @@ goals:
         - introduction of new name for same value (`DB_SECRETS -> DATABASE_SECRETS`)
         - and deprecation of old name (managing deletion of old `DB_SECRETS` references)
 
-scope of support:
+## scope of support:
 
 - microservice configuration
 - parse YAML manifests
@@ -21,15 +37,14 @@ scope of support:
 
 ## subcommands
 
-### `cogs generate`
-* `cogs generate <env_name> ./service-name.cog.yaml [--out=(json|yaml|toml)]`
-- outputs a flat and serialized K:V array
+* `cogs generate`
+  - outputs a flat and serialized K:V array
 
-### `cogs migrate`
-* `cogs migrate <OLD_KEY_NAME> <NEW_KEY_NAME> [<envs>...]`
-* `cogs migrate --commit <OLD_KEY_NAME> <NEW_KEY_NAME> (<envs>...)`
+* `cogs migrate` TODO
+  - `cogs migrate <OLD_KEY_NAME> <NEW_KEY_NAME> [<envs>...]`
+  - `cogs migrate --commit <OLD_KEY_NAME> <NEW_KEY_NAME> (<envs>...)`
 
-Aims to allow a gradual and automated migration of key names without risking sensitive environments
+Aims to allow a gradual and automated migration of key names without risking sensitive environments:
 
 ```yaml
 # config.yaml pre migration
@@ -56,3 +71,11 @@ DATABASE_SECRETS: "secret_pw"
 ```
 
 * should apply to plaintext K/Vs and SOPS encrypted values
+
+# Running example data locally:
+* `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
+* Building binary locally : `go build -o $GOPATH/bin ./cmd/cogs`
+* Kustomize var retrieval: `cogs generate  kustomize_env ./basic.cog.toml`
+* Encrypted var retrieval: `cogs generate enc_env ./basic.cog.toml`
+* `some-service.cog.toml` shows how a toml definition correlates to the JSON counterpart
+

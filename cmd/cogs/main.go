@@ -14,7 +14,7 @@ import (
 
 func main() {
 	usage := `
-COGS
+COGS COnfiguration manaGement S
 
 Usage:
   cogs generate <env> <cog-file> [--out=<type>]
