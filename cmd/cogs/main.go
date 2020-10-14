@@ -20,6 +20,8 @@ Usage:
   cogs generate <env> <cog-file> [--out=<type>]
 
 Options:
+  -h --help        Show this screen.
+  --version        Show version.
   --output=<type>  Configuration output type [default: json].
 `
 

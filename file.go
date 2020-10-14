@@ -3,7 +3,9 @@ package cogs
 import (
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/mikefarah/yq/v3/pkg/yqlib"
 	"gopkg.in/yaml.v3"
 )
@@ -25,8 +27,9 @@ func (t readType) Validate() error {
 	}
 }
 
+// Queryable allows a query path to return the underlying value for a given visitor
 type Queryable interface {
-	Get(queryPath string) (string, error)
+	SetValue(*Cfg) error
 }
 
 // readFile takes a filepath and returns the byte value of the data within
@@ -51,8 +54,18 @@ func readFile(filePath string) ([]byte, error) {
 
 }
 
+// kindStr maps the yaml node types to strings for error messaging
+var kindStr = map[yaml.Kind]string{
+	0:                 "None",
+	yaml.DocumentNode: "DocumentNode",
+	yaml.SequenceNode: "SequenceNode",
+	yaml.MappingNode:  "MappingNode",
+	yaml.ScalarNode:   "ScalarNode",
+	yaml.AliasNode:    "AliasNode",
+}
+
 // NewYamlVisitor returns a visitor object that satisfies the Queryable interface
-func NewYamlVisitor(buf []byte) (*yamlVisitor, error) {
+func NewYamlVisitor(buf []byte) (Queryable, error) {
 	visitor := &yamlVisitor{
 		rootNode:    &yaml.Node{},
 		cachedNodes: make(map[string]map[string]string),
@@ -67,16 +80,14 @@ func NewYamlVisitor(buf []byte) (*yamlVisitor, error) {
 	return visitor, nil
 }
 
-type cachedNode struct {
-	readType readType
-}
 type yamlVisitor struct {
 	rootNode    *yaml.Node
 	cachedNodes map[string]map[string]string
 	parser      yqlib.YqLib
 }
 
-func (n *yamlVisitor) Get(cfg *Cfg) (err error) {
+// SetValue assigns the Value for a given Cfg using the existing Cfg.Path and Cfg.SubPath
+func (n *yamlVisitor) SetValue(cfg *Cfg) (err error) {
 	var ok bool
 
 	if cfg.SubPath == "" {
@@ -106,16 +117,25 @@ func (n *yamlVisitor) Get(cfg *Cfg) (err error) {
 	}
 
 	// nodes with readType of deferred should be a string to string k/v pair
-	if node.Kind != yaml.MappingNode || cfg.readType != deferred {
+	if node.Kind != yaml.MappingNode && cfg.readType != dotenv {
 		return fmt.Errorf("Node kind unsupported at this time: %s", kindStr[node.Kind])
 	}
 
 	// for now only support string maps
 	// TODO handle dotenv readType - P0PS-755
 	cachedMap := make(map[string]string)
-	err = node.Decode(&cachedMap)
-	if err != nil {
-		return err
+
+	switch cfg.readType {
+	case dotenv:
+		cachedMap, err = unmarshalDotenv(node)
+		if err != nil {
+			return err
+		}
+	case deferred:
+		err = node.Decode(&cachedMap)
+		if err != nil {
+			return err
+		}
 	}
 
 	cfg.Value, ok = cachedMap[cfg.Name]
@@ -142,11 +162,19 @@ func (n *yamlVisitor) get(subPath string) (*yaml.Node, error) {
 	return nodeCtx[0].Node, nil
 }
 
-var kindStr = map[yaml.Kind]string{
-	0:                 "None",
-	yaml.DocumentNode: "DocumentNode",
-	yaml.SequenceNode: "SequenceNode",
-	yaml.MappingNode:  "MappingNode",
-	yaml.ScalarNode:   "ScalarNode",
-	yaml.AliasNode:    "AliasNode",
+func unmarshalDotenv(node *yaml.Node) (map[string]string, error) {
+	var strEnv string
+
+	if err := node.Decode(&strEnv); err != nil {
+		var sliceEnv []string
+		if err := node.Decode(&sliceEnv); err != nil {
+			return nil, fmt.Errorf("Unable to decode node kind: %s to dotenv format", kindStr[node.Kind])
+		}
+		strEnv = strings.Join(sliceEnv, "\n")
+	}
+	envMap, err := godotenv.Unmarshal(strEnv)
+	if err != nil {
+		return nil, err
+	}
+	return envMap, nil
 }
