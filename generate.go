@@ -11,6 +11,8 @@ import (
 // used to represent Cfg k/v pair at the top level of a file
 const noSubPath = ""
 
+var NoEnc bool = false
+
 // Cfg holds all the data needed to generate one string key value pair
 type Cfg struct {
 	// Defaults to key name unless explicitly declared
@@ -77,9 +79,9 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]string, error) {
 	// ex: var.path = ["./path", ".subpath"]
 	// ---
 
-	type PathGroup struct{
+	type PathGroup struct {
 		loadFile func(filePath string) ([]byte, error)
-		cfgs []*Cfg
+		cfgs     []*Cfg
 	}
 	pathGroups := make(map[string]*PathGroup)
 
@@ -192,9 +194,12 @@ func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]string
 func parseEnv(env RawEnv) (cfgMap configMap, err error) {
 	cfgMap = make(configMap)
 
-	err = decodeEncrypted(cfgMap, env)
-	if err != nil {
-		return nil, err
+	// skip fetching encrypted vars if flag is toggled
+	if !NoEnc {
+		err = decodeEncrypted(cfgMap, env)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = decodeEnv(cfgMap, env)
