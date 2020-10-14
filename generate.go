@@ -76,26 +76,31 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]string, error) {
 	// as well as Cfg objects with SubPaths present:
 	// ex: var.path = ["./path", ".subpath"]
 	// ---
-	pathGroup := make(map[string][]*Cfg)
+
+	type PathGroup struct{
+		loadFile func(filePath string) ([]byte, error)
+		cfgs []*Cfg
+	}
+	pathGroups := make(map[string]*PathGroup)
 
 	// 1. sort Cfgs by Path
 	for _, cfg := range g.cfgMap {
-		if cfg.Path != "" && !cfg.encrypted {
-			if _, ok := pathGroup[cfg.Path]; !ok {
-				pathGroup[cfg.Path] = []*Cfg{}
+		if cfg.Path != "" {
+			if _, ok := pathGroups[cfg.Path]; !ok {
+				loadFileFunc := readFile
+				if cfg.encrypted {
+					loadFileFunc = decryptFile
+				}
+				pathGroups[cfg.Path] = &PathGroup{loadFile: loadFileFunc, cfgs: []*Cfg{}}
 			}
-			pathGroup[cfg.Path] = append(pathGroup[cfg.Path], cfg)
-		}
-		// TODO POPS-520
-		if cfg.encrypted {
-			cfg.Value = "|enc|" + cfg.Path
+			pathGroups[cfg.Path].cfgs = append(pathGroups[cfg.Path].cfgs, cfg)
 		}
 	}
 
-	for path, cfgs := range pathGroup {
+	for path, pathGroup := range pathGroups {
 		// 2. for each distinct Path: generate a Reader object
 		cfgFilePath := g.getCfgFilePath(path)
-		fileBuf, err := readFile(cfgFilePath)
+		fileBuf, err := pathGroup.loadFile(cfgFilePath)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +112,7 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]string, error) {
 		}
 
 		// 4. traverse every Path and possible SubPath retrieving the Cfg.Values associated with it
-		for _, cfg := range cfgs {
+		for _, cfg := range pathGroup.cfgs {
 			err := visitor.Get(cfg)
 			if err != nil {
 				return nil, err

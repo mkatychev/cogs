@@ -8,4 +8,4 @@ var.path = ["./test_files/manifest.yaml", "subpath"]
 other_var.path = ["./test_files/manifest.yaml", "subpath"]
 some_var.name = "some_name"
 [qa.enc]
-enc_var.path = "./path.enc"
+enc_var.path = "./test_files/test.enc.yaml"
