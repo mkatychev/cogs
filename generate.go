@@ -11,7 +11,10 @@ import (
 // used to represent Cfg k/v pair at the top level of a file
 const noSubPath = ""
 
+// NoEnc decides whether to output encrypted variables or now
 var NoEnc bool = false
+
+// EnvSubst decides whether to use environmental substitution or not
 var EnvSubst bool = false
 
 // Cfg holds all the data needed to generate one string key value pair
@@ -46,11 +49,11 @@ type Resolver interface {
 	SetName(string)
 }
 
-// Gear represents one of the envs in a cog manifest.
+// Gear represents one of the contexts in a cog manifest.
 // The term "gear" is used to refer to the operating state of a machine (similar
 // to how a microservice can operate locally or in a remote environment)
 // rather than a gear object. The term "switching gears" is an apt representation
-// of how one Cog manifest file can have many environments
+// of how one Cog manifest file can have many contexts/environments
 type Gear struct {
 	Name   string
 	cfgMap configMap
@@ -198,7 +201,7 @@ func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]string
 
 	env, ok := manifest.table[envName]
 	if !ok {
-		return nil, fmt.Errorf("%s environment missing from cog file", envName)
+		return nil, fmt.Errorf("%s context missing from cog file", envName)
 	}
 
 	genOut, err := gear.ResolveMap(env)
@@ -260,7 +263,7 @@ func decodeEnv(cfgMap configMap, env RawEnv) error {
 		return fmt.Errorf(".vars must map to a table")
 	}
 
-	// check for dubplicate keys for env.vars and env.enc.vars
+	// check for duplicate keys for env.vars and env.enc.vars
 	for varName, rawVar := range vars {
 		if _, ok := cfgMap[varName]; ok {
 			return fmt.Errorf("%s: duplicate key present in env and env.enc", varName)

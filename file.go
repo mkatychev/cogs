@@ -66,7 +66,7 @@ func readFile(filePath string) ([]byte, error) {
 
 }
 
-// envSubFile returns a file with environmental substition applied, call tldr for more:
+// envSubFile returns a file with environmental substitution applied, call tldr for more:
 // $ tldr envsubst
 func envSubFile(filePath string) (string, error) {
 	bytes, err := readFile(filePath)
@@ -144,7 +144,7 @@ func (n *yamlVisitor) SetValue(cfg *Cfg) (err error) {
 
 	// nodes with readType of deferred should be a string to string k/v pair
 	if node.Kind != yaml.MappingNode && cfg.readType != dotenv {
-		return fmt.Errorf("%s: NodeKind/readType unsupported at this time: %s/%s",
+		return fmt.Errorf("%s: NodeKind/readType unsupported: %s/%s",
 			cfg.Name, kindStr[node.Kind], cfg.readType)
 	}
 
@@ -184,7 +184,7 @@ func (n *yamlVisitor) get(subPath string) (*yaml.Node, error) {
 	}
 	// should only match a single node
 	if len(nodeCtx) != 1 {
-		return nil, fmt.Errorf("returned non signular result for path '%s'", subPath)
+		return nil, fmt.Errorf("returned non singular result for path '%s'", subPath)
 	}
 	return nodeCtx[0].Node, nil
 }

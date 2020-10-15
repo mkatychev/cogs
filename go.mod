@@ -1,9 +1,9 @@
-module github.com/bestowinc/cogs
+module github.com/Bestowinc/cogs
 
 go 1.14
 
 require (
-	cloud.google.com/go v0.68.0 // indirect
+	cloud.google.com/go v0.69.1 // indirect
 	github.com/Azure/azure-sdk-for-go v47.0.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.10 // indirect
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.3 // indirect
@@ -14,6 +14,7 @@ require (
 	github.com/drone/envsubst v1.0.2
 	github.com/frankban/quicktest v1.11.1 // indirect
 	github.com/goccy/go-yaml v1.8.2 // indirect
+	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/google/go-cmp v0.5.2
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -32,12 +33,10 @@ require (
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	go.mozilla.org/sops/v3 v3.6.1
-	go.opencensus.io v0.22.5 // indirect
 	golang.org/x/crypto v0.0.0-20201012173705-84dcc777aaee // indirect
-	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb // indirect
-	golang.org/x/sys v0.0.0-20201013132646-2da7054afaeb // indirect
+	golang.org/x/sys v0.0.0-20201015000850-e3ed0017c211 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
-	google.golang.org/genproto v0.0.0-20201013134114-7f9ee70cb474 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/grpc v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473

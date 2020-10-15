@@ -1,22 +1,38 @@
-name = "some_service"
+name = "basic_service"
 
+# key value pairs for a context are defined under <ctx>.vars
 [docker.vars]
 var = "var_value"
 other_var = "other_var_value"
 
 [qa]
+# a default path to be inherited can be defined under <ctx>.path
 path = ["./test_files/manifest.yaml", "subpath"]
 [qa.vars]
+# a <var>.path key can map to four valid types:
+# 1. path value is "string_value" - indicating a single file to look through
+# 2. path value is [] - thus <ctx>.path will be inherited
+# 3. path value is a ["two_index, "array"] - either index being [] or "string_value":
+# -  [[], "subpath"] - path will be inherited from <ctx>.path if present
+# -  ["path", []] - subpath will be inherited from <ctx>.path if present
+# -  ["path", "subpath"] - nothing will be inherited
 var1.path = ["./test_files/manifest.yaml", "subpath"]
 var2.path = []
 var3.path = [[], "other_subpath"]
-some_var.name = "some_name" #dangling variable should return {"some_var": ""} since only name override was defined
+# dangling variable should return {"some_var": ""} since only name override was defined
+some_var.name = "some_name" 
+# key value pairs for an encrypted context are defined under <ctx>.enc.vars
 [qa.enc.vars]
 enc_var.path = "./test_files/test.enc.yaml"
 
 [kustomize]
 path = ["./test_files/kustomization.yaml", "configMapGenerator.[0].literals"]
+# a default deserialization path to be inherited can be defined under <ctx>.path
+# once <var>.path has been traversed, attempt to deserialize the returned object
+# as if it was in dotenv format
 type = "dotenv"
 [kustomize.vars]
+# var1.name = "VAR_1" means that the key alias "VAR_1" will
+# be searched for to retrieve the var1 value
 var1 = {path = [], name = "VAR_1"}
 var2 = {path = [], name = "VAR_2"}

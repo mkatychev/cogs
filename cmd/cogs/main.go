@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bestowinc/cogs"
+	"github.com/Bestowinc/cogs"
 	"github.com/docopt/docopt-go"
 	"github.com/joho/godotenv"
 	"github.com/pelletier/go-toml"
@@ -44,21 +44,21 @@ func main() {
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs generate <env> <cog-file> [--out=<type>] [--keys=<key,>] [--no-enc] [--envsubst]
+  cogs gen <ctx> <cog-file> [--out=<type>] [--keys=<key,>] [-n] [-e]
 
 Options:
   -h --help        Show this screen.
   --version        Show version.
   --no-enc, -n     Skips fetching encrypted vars.
-  --envsubst, -e   Perform environmental subsitution on the given cog file.
+  --envsubst, -e   Perform environmental substitution on the given cog file.
   --keys=<key,>    Return specific keys from cog manifest.
   --out=<type>     Configuration output type [default: json].
                    Valid types: json, toml, yaml, dotenv, raw.`
 
-	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.3.2")
+	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.3.3")
 	var conf struct {
-		Generate bool
-		Env      string
+		Gen      bool
+		Ctx      string
 		File     string `docopt:"<cog-file>"`
 		Output   string `docopt:"--out"`
 		Keys     string
@@ -87,7 +87,7 @@ Options:
 			if !ok {
 				encHint := ""
 				if conf.NoEnc {
-					encHint = "\n--no-enc was called: was it an ecrypted value? "
+					encHint = "\n--no-enc was called: was it an encrypted value? "
 				}
 				return nil, fmt.Errorf("--key: [%s] missing from generated config%s", key, encHint)
 			}
@@ -96,8 +96,8 @@ Options:
 	}
 
 	switch {
-	case conf.Generate:
-		cfgMap, err := cogs.Generate(conf.Env, conf.File)
+	case conf.Gen:
+		cfgMap, err := cogs.Generate(conf.Ctx, conf.File)
 		ifErr(err)
 		cfgMap, err = filterCfgMap(cfgMap)
 		ifErr(err)
