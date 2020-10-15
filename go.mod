@@ -11,6 +11,7 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.3.0 // indirect
 	github.com/aws/aws-sdk-go v1.35.7 // indirect
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
+	github.com/drone/envsubst v1.0.2
 	github.com/frankban/quicktest v1.11.1 // indirect
 	github.com/goccy/go-yaml v1.8.2 // indirect
 	github.com/golang/snappy v0.0.2 // indirect

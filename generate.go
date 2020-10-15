@@ -12,6 +12,7 @@ import (
 const noSubPath = ""
 
 var NoEnc bool = false
+var EnvSubst bool = false
 
 // Cfg holds all the data needed to generate one string key value pair
 type Cfg struct {
@@ -150,8 +151,22 @@ type RawEnv map[string]interface{}
 
 // Generate is a top level command that takes an env argument and cogfilepath to return a string map
 func Generate(envName, cogFile string) (map[string]string, error) {
+	var tree *toml.Tree
+	var err error
 
-	tree, err := toml.LoadFile(cogFile)
+	if EnvSubst {
+		substFile, err := envSubFile(cogFile)
+		if err != nil {
+			return nil, err
+		}
+		tree, err = toml.Load(substFile)
+		if err != nil {
+			return nil, err
+		}
+		return generate(envName, tree, &Gear{filePath: cogFile})
+	}
+
+	tree, err = toml.LoadFile(cogFile)
 	if err != nil {
 		return nil, err
 	}

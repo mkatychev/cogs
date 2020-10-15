@@ -35,17 +35,18 @@ func main() {
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs generate <env> <cog-file> [--out=<type>] [--no-enc] [--keys=<key,>] [--raw]
+  cogs generate <env> <cog-file> [--out=<type>] [--keys=<key,>] [--no-enc] [--envsubst]
 
 Options:
   -h --help        Show this screen.
   --version        Show version.
-  --no-enc         Skips fetching encrypted vars.
+  --no-enc, -n     Skips fetching encrypted vars.
+  --envsubst, -e   Perform environmental subsitution on the given cog file.
   --keys=<key,>    Return specific keys from cog manifest.
   --out=<type>     Configuration output type [default: json].
                    Valid types: json, toml, yaml, raw.`
 
-	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.3")
+	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.3.1")
 	var conf struct {
 		Generate bool
 		Env      string
@@ -54,11 +55,14 @@ Options:
 		Keys     string
 		NoEnc    bool
 		Raw      bool
+		EnvSubst bool `docopt:"--envsubst"`
 	}
 
-	opts.Bind(&conf)
+	err := opts.Bind(&conf)
+	ifErr(err)
 	logging.SetLevel(logging.WARNING, "yq")
 	cogs.NoEnc = conf.NoEnc
+	cogs.EnvSubst = conf.EnvSubst
 
 	// filterCfgMap retains only key names passed to --keys
 	filterCfgMap := func(cfgMap map[string]string) (map[string]string, error) {

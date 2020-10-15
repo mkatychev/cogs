@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/drone/envsubst"
 	"github.com/joho/godotenv"
 	"github.com/mikefarah/yq/v3/pkg/yqlib"
 	"gopkg.in/yaml.v3"
@@ -63,6 +64,20 @@ func readFile(filePath string) ([]byte, error) {
 
 	return bytes, nil
 
+}
+
+// envSubFile returns a file with environmental substition applied, call tldr for more:
+// $ tldr envsubst
+func envSubFile(filePath string) (string, error) {
+	bytes, err := readFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	substEnv, err := envsubst.EvalEnv(string(bytes))
+	if err != nil {
+		return "", err
+	}
+	return substEnv, nil
 }
 
 // kindStr maps the yaml node types to strings for error messaging
