@@ -28,10 +28,10 @@ name = "basic_service"
 var = "var_value"
 other_var = "other_var_value"
 
-[qa]
+[sops]
 # a default path to be inherited can be defined under <ctx>.path
 path = ["./test_files/manifest.yaml", "subpath"]
-[qa.vars]
+[sops.vars]
 # a <var>.path key can map to four valid types:
 # 1. path value is "string_value" - indicating a single file to look through
 # 2. path value is [] - thus <ctx>.path will be inherited
@@ -42,10 +42,10 @@ path = ["./test_files/manifest.yaml", "subpath"]
 var1.path = ["./test_files/manifest.yaml", "subpath"]
 var2.path = []
 var3.path = [[], "other_subpath"]
-# dangling variable should return {"some_var": ""} since only name override was defined
+# dangling variable should return 'some_var = ""' since only name override was defined
 some_var.name = "some_name" 
 # key value pairs for an encrypted context are defined under <ctx>.enc.vars
-[qa.enc.vars]
+[sops.enc.vars]
 enc_var.path = "./test_files/test.enc.yaml"
 
 [kustomize]
@@ -120,8 +120,8 @@ DATABASE_SECRETS: "secret_pw"
 ## running example data locally:
 * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
 * Building binary locally : `go build -o $GOPATH/bin ./cmd/cogs`
-* Kustomize var retrieval: `cogs gen  kustomize_env ./basic.cog.toml`
-* Encrypted var retrieval: `cogs gen enc_env ./basic.cog.toml`
+* Kustomize style var retrieval: `cogs gen  kustomize ./basic.cog.toml`
+* Encrypted var retrieval: `cogs gen sops ./basic.cog.toml`
 * `some-service.cog.toml` shows how a toml definition correlates to the JSON counterpart
 
 
