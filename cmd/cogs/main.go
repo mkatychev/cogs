@@ -8,6 +8,7 @@ import (
 
 	"github.com/bestowinc/cogs"
 	"github.com/docopt/docopt-go"
+	"github.com/joho/godotenv"
 	"github.com/pelletier/go-toml"
 	logging "gopkg.in/op/go-logging.v1"
 	"gopkg.in/yaml.v3"
@@ -30,6 +31,14 @@ func getRawValue(cfgMap map[string]string) string {
 
 }
 
+func upperKeys(cfgMap map[string]string) map[string]string {
+	newCfgMap := make(map[string]string)
+	for k, v := range cfgMap {
+		newCfgMap[strings.ToUpper(k)] = v
+	}
+	return newCfgMap
+}
+
 func main() {
 	usage := `
 COGS COnfiguration manaGement S
@@ -44,9 +53,9 @@ Options:
   --envsubst, -e   Perform environmental subsitution on the given cog file.
   --keys=<key,>    Return specific keys from cog manifest.
   --out=<type>     Configuration output type [default: json].
-                   Valid types: json, toml, yaml, raw.`
+                   Valid types: json, toml, yaml, dotenv, raw.`
 
-	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.3.1")
+	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.3.2")
 	var conf struct {
 		Generate bool
 		Env      string
@@ -93,17 +102,23 @@ Options:
 		cfgMap, err = filterCfgMap(cfgMap)
 		ifErr(err)
 
-		var output []byte
+		var b []byte
+		var output string
 		switch conf.Output {
 		case "json":
-			output, err = json.MarshalIndent(cfgMap, "", "  ")
+			b, err = json.MarshalIndent(cfgMap, "", "  ")
+			output = string(b)
 		case "yaml":
-			output, err = yaml.Marshal(cfgMap)
+			b, err = yaml.Marshal(cfgMap)
+			output = string(b)
 		case "toml":
-			output, err = toml.Marshal(cfgMap)
+			b, err = toml.Marshal(cfgMap)
+			output = string(b)
+		case "dotenv":
+			// convert all key values to uppercase
+			output, err = godotenv.Marshal(upperKeys(cfgMap))
 		case "raw":
-			fmt.Fprintln(os.Stdout, getRawValue(cfgMap))
-			os.Exit(0)
+			output = getRawValue(cfgMap)
 		default:
 			err = fmt.Errorf("invalid arg: --out=" + conf.Output)
 		}
