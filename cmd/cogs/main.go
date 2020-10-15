@@ -20,22 +20,32 @@ func ifErr(err error) {
 	}
 }
 
+func getRawValue(cfgMap map[string]string) string {
+	output := ""
+	// for now, no delimiter
+	for _, v := range cfgMap {
+		output = output + v
+	}
+	return output
+
+}
+
 func main() {
 	usage := `
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs generate <env> <cog-file> [--out=<type>] [--no-enc] [--keys=<key,>]
+  cogs generate <env> <cog-file> [--out=<type>] [--no-enc] [--keys=<key,>] [--raw]
 
 Options:
   -h --help        Show this screen.
   --version        Show version.
-  --out=<type>     Configuration output type [default: json].
   --no-enc         Skips fetching encrypted vars.
   --keys=<key,>    Return specific keys from cog manifest.
-`
+  --out=<type>     Configuration output type [default: json].
+                   Valid types: json, toml, yaml, raw.`
 
-	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.2")
+	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.3")
 	var conf struct {
 		Generate bool
 		Env      string
@@ -43,6 +53,7 @@ Options:
 		Output   string `docopt:"--out"`
 		Keys     string
 		NoEnc    bool
+		Raw      bool
 	}
 
 	opts.Bind(&conf)
@@ -86,6 +97,9 @@ Options:
 			output, err = yaml.Marshal(cfgMap)
 		case "toml":
 			output, err = toml.Marshal(cfgMap)
+		case "raw":
+			fmt.Fprintln(os.Stdout, getRawValue(cfgMap))
+			os.Exit(0)
 		default:
 			err = fmt.Errorf("invalid arg: --out=" + conf.Output)
 		}

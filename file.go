@@ -23,7 +23,18 @@ func (t readType) Validate() error {
 	case dotenv:
 		return nil
 	default:
-		return fmt.Errorf("%s is an invalid cfgType", t)
+		return fmt.Errorf("%s is an invalid cfgType", string(t))
+	}
+}
+
+func (t readType) String() string {
+	switch t {
+	case dotenv:
+		return string(dotenv)
+	case deferred:
+		return "deferred"
+	default:
+		return "unknown"
 	}
 }
 
@@ -118,7 +129,8 @@ func (n *yamlVisitor) SetValue(cfg *Cfg) (err error) {
 
 	// nodes with readType of deferred should be a string to string k/v pair
 	if node.Kind != yaml.MappingNode && cfg.readType != dotenv {
-		return fmt.Errorf("Node kind unsupported at this time: %s", kindStr[node.Kind])
+		return fmt.Errorf("%s: NodeKind/readType unsupported at this time: %s/%s",
+			cfg.Name, kindStr[node.Kind], cfg.readType)
 	}
 
 	// for now only support string maps

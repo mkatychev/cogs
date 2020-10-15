@@ -8,12 +8,15 @@
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs generate <env> <cog-file> [--out=<type>]
+  cogs generate <env> <cog-file> [--out=<type>] [--no-enc] [--keys=<key,>] [--raw]
 
 Options:
   -h --help        Show this screen.
   --version        Show version.
-  --output=<type>  Configuration output type [default: json].
+  --no-enc         Skips fetching encrypted vars.
+  --keys=<key,>    Return specific keys from cog manifest.
+  --out=<type>     Configuration output type [default: json].
+                   Valid types: json, toml, yaml, raw.
 ```
 
 ## goals:

@@ -2,7 +2,7 @@ package cogs
 
 import (
 	"fmt"
-
+	"os"
 	"path"
 
 	"github.com/pelletier/go-toml"
@@ -138,7 +138,11 @@ func (g *Gear) getCfgFilePath(cfgPath string) string {
 	if path.IsAbs(cfgPath) {
 		return cfgPath
 	}
-	return path.Join(path.Dir(g.filePath), cfgPath)
+	dir, err := os.Getwd()
+	if err != nil {
+		dir = path.Dir(g.filePath)
+	}
+	return path.Join(dir, cfgPath)
 }
 
 // RawEnv is meant to represent the topmost untraversed level of a cog environment
@@ -300,14 +304,19 @@ func parseCfgMap(varName string, baseCfg *Cfg, cfgVal map[string]interface{}) (*
 		case "name":
 			cfg.Name, ok = v.(string)
 			if !ok {
-				return &cfg, fmt.Errorf(".name must be a string")
+				return nil, fmt.Errorf(".name must be a string")
 			}
 		case "path":
 			if err := decodePath(v, &cfg, baseCfg); err != nil {
 				return nil, fmt.Errorf("%s.path: %s", varName, err)
 			}
 		case "type":
-			cfg.readType = readType(k)
+			rType, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf(".type must be a string")
+			}
+
+			cfg.readType = readType(rType)
 			if err := cfg.readType.Validate(); err != nil {
 				return nil, err
 			}
