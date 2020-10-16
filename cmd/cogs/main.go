@@ -14,37 +14,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func ifErr(err error) {
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
-func getRawValue(cfgMap map[string]string) string {
-	output := ""
-	// for now, no delimiter
-	for _, v := range cfgMap {
-		output = output + v
-	}
-	return output
-
-}
-
-func upperKeys(cfgMap map[string]string) map[string]string {
-	newCfgMap := make(map[string]string)
-	for k, v := range cfgMap {
-		newCfgMap[strings.ToUpper(k)] = v
-	}
-	return newCfgMap
-}
-
 func main() {
 	usage := `
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs gen <ctx> <cog-file> [--out=<type>] [--keys=<key,>] [-n] [-e]
+  cogs gen <ctx> <cog-file> [--out=<type>] [--keys=<key,>] [--not=<key,>] [-n] [-e]
 
 Options:
   -h --help        Show this screen.
@@ -53,21 +28,24 @@ Options:
   --envsubst, -e   Perform environmental substitution on the given cog file.
   --keys=<key,>    Return specific keys from cog manifest.
   --out=<type>     Configuration output type [default: json].
-                   Valid types: json, toml, yaml, dotenv, raw.`
+                   Valid types: json, toml, yaml, dotenv, raw.
+  --not=<key,>     Exclude specific keys, comma separated.`
 
-	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.3.4")
+	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.4.0")
 	var conf struct {
 		Gen      bool
 		Ctx      string
 		File     string `docopt:"<cog-file>"`
 		Output   string `docopt:"--out"`
 		Keys     string
+		Not      string
 		NoEnc    bool
 		Raw      bool
 		EnvSubst bool `docopt:"--envsubst"`
 	}
 
 	err := opts.Bind(&conf)
+	println("NOT: ", conf.Not)
 	ifErr(err)
 	logging.SetLevel(logging.WARNING, "yq")
 	cogs.NoEnc = conf.NoEnc
@@ -76,20 +54,36 @@ Options:
 	// filterCfgMap retains only key names passed to --keys
 	filterCfgMap := func(cfgMap map[string]string) (map[string]string, error) {
 
+		// --not runs before --keys!
+		// make sure to avoid --not=key_name --key=key_name, ya dingus!
+		fmt.Printf("b: %+v\n", cfgMap)
+		var notList []string
+		if conf.Not != "" {
+			notList = strings.Split(conf.Not, ",")
+			cfgMap = exclude(notList, cfgMap)
+		}
+		fmt.Printf("notList: %+v\n", notList)
+		fmt.Printf("a: %+v\n", cfgMap)
 		if conf.Keys == "" {
 			return cfgMap, nil
 		}
+
 		keyList := strings.Split(conf.Keys, ",")
 		newCfgMap := make(map[string]string)
 		for _, key := range keyList {
 			var ok bool
 			newCfgMap[key], ok = cfgMap[key]
 			if !ok {
+				notHint := ""
+				if inList(key, notList) {
+					notHint = fmt.Sprintf("\n\n--not=%s and --keys=%s were called\n"+
+						"avoid trying to include and exclude the same value, ya dingus!", key, key)
+				}
 				encHint := ""
 				if conf.NoEnc {
-					encHint = "\n--no-enc was called: was it an encrypted value? "
+					encHint = "\n\n--no-enc was called: was it an encrypted value?\n"
 				}
-				return nil, fmt.Errorf("--key: [%s] missing from generated config%s", key, encHint)
+				return nil, fmt.Errorf("--key: [%s] missing from generated config%s%s", key, encHint, notHint)
 			}
 		}
 		return newCfgMap, nil
@@ -122,6 +116,7 @@ Options:
 		default:
 			err = fmt.Errorf("invalid arg: --out=" + conf.Output)
 		}
+		ifErr(err)
 		fmt.Fprintln(os.Stdout, string(output))
 	}
 }

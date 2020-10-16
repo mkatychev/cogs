@@ -1,6 +1,15 @@
 ## installation: 
+
+With `go`:
 * clone this repo, `cd` into it
 * `go build -o $GOPATH/bin ./cmd/cogs`
+
+Faster install, PLATFORM can equal Linux/Windows/Darwin:
+```sh
+PLATFORM="Darwin" COGS_VERSION="0.4.0" curl -SLk "https://github.com/Bestowinc/cogs/releases/download/v${COGS_VERSION}/cogs_${COGS_VERSION}_${PLATFORM}_x86_64.tar.gz" \
+  | tar xvz -C /usr/local/bin cogs
+```
+
 
 ```
 COGS COnfiguration manaGement S
@@ -16,6 +25,7 @@ Options:
   --keys=<key,>    Return specific keys from cog manifest.
   --out=<type>     Configuration output type [default: json].
                    Valid types: json, toml, yaml, dotenv, raw.
+  --not=<key,>     Exclude specific keys, comma separated.
 ```
 
 ## annotated spec:
@@ -38,7 +48,7 @@ path = ["./test_files/manifest.yaml", "subpath"]
 # 3. path value is a ["two_index, "array"] - either index being [] or "string_value":
 # -  [[], "subpath"] - path will be inherited from <ctx>.path if present
 # -  ["path", []] - subpath will be inherited from <ctx>.path if present
-# -  ["path", "subpath"] - nothing will be inherited
+# 4. ["path", "subpath"] - nothing will be inherited
 var1.path = ["./test_files/manifest.yaml", "subpath"]
 var2.path = []
 var3.path = [[], "other_subpath"]
