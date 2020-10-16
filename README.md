@@ -17,21 +17,20 @@ PL="Darwin" VR="0.4.1" \
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs gen <ctx> <cog-file> [--out=<type>] [--keys=<key,>] [-n] [-e]
+  cogs gen <ctx> <cog-file> [--out=<type>] [--keys=<key,>] [--not=<key,>] [-n] [-e]
 
 Options:
   -h --help        Show this screen.
   --version        Show version.
   --no-enc, -n     Skips fetching encrypted vars.
   --envsubst, -e   Perform environmental substitution on the given cog file.
-  --keys=<key,>    Return specific keys from cog manifest.
+  --keys=<key,>    Include specific keys, comma separated.
+  --not=<key,>     Exclude specific keys, comma separated.
   --out=<type>     Configuration output type [default: json].
                    Valid types: json, toml, yaml, dotenv, raw.
-  --not=<key,>     Exclude specific keys, comma separated.
 ```
 
 ## annotated spec:
-add this `envsubst`
 
 ```toml
 name = "basic_service"
@@ -143,3 +142,16 @@ DATABASE_SECRETS: "secret_pw"
 [TOML spec](https://toml.io/en/v1.0.0-rc.3#keyvalue-pair)
 
 [envsubst](https://www.gnu.org/software/gettext/manual/html_node/envsubst-Invocation.html)
+
+
+Notes:
+* `envsubst` warning, make sure that any `--envsubst` tags retain a file's membership as valid TOML:
+```toml
+# yes
+[env.vars]
+thing = "${THING_VAR}"
+
+# NO
+[sloppy.vars]${NO}
+thing = "${THING_VAR}"
+```

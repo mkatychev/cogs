@@ -26,10 +26,10 @@ Options:
   --version        Show version.
   --no-enc, -n     Skips fetching encrypted vars.
   --envsubst, -e   Perform environmental substitution on the given cog file.
-  --keys=<key,>    Return specific keys from cog manifest.
+  --keys=<key,>    Include specific keys, comma separated.
+  --not=<key,>     Exclude specific keys, comma separated.
   --out=<type>     Configuration output type [default: json].
-                   Valid types: json, toml, yaml, dotenv, raw.
-  --not=<key,>     Exclude specific keys, comma separated.`
+                   Valid types: json, toml, yaml, dotenv, raw.`
 
 	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.4.1")
 	var conf struct {
