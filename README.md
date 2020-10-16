@@ -6,8 +6,9 @@ With `go`:
 
 Faster install, PLATFORM can equal Linux/Windows/Darwin:
 ```sh
-PLATFORM="Darwin" COGS_VERSION="0.4.0" curl -SLk "https://github.com/Bestowinc/cogs/releases/download/v${COGS_VERSION}/cogs_${COGS_VERSION}_${PLATFORM}_x86_64.tar.gz" \
-  | tar xvz -C /usr/local/bin cogs
+PLATFORM="Darwin" COGS_VERSION="0.4.0" \
+  curl -SLk "github.com/Bestowinc/cogs/releases/download/v${COGS_VERSION}/cogs_${COGS_VERSION}_${PLATFORM}_x86_64.tar.gz" | \
+  tar xvz -C /usr/local/bin cogs
 ```
 
 
