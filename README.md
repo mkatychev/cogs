@@ -4,10 +4,11 @@ With `go`:
 * clone this repo, `cd` into it
 * `go build -o $GOPATH/bin ./cmd/cogs`
 
-Faster install, PLATFORM can equal Linux/Windows/Darwin:
+Without `go`, `PL`atform can be Linux/Windows/Darwin:
 ```sh
-PLATFORM="Darwin" COGS_VERSION="0.4.0" \
-  curl -SLk "github.com/Bestowinc/cogs/releases/download/v${COGS_VERSION}/cogs_${COGS_VERSION}_${PLATFORM}_x86_64.tar.gz" | \
+PL="Darwin" VR="0.4.1" \
+  curl -SLk \ 
+  "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
 ```
 
