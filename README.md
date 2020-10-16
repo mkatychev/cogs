@@ -30,6 +30,7 @@ Options:
 ```
 
 ## annotated spec:
+add this `envsubst`
 
 ```toml
 name = "basic_service"
@@ -78,8 +79,8 @@ var2 = {path = [], name = "VAR_2"}
     * aggregates plaintext config values and SOPS secrets in one manifest
         - ex: local development vs. docker vs. production environments
 
-1. Introduce an automated and cohesive way to change configurations wholesale
-    * allow a gradual introduction of new variable names by automating:
+1. Introduce an automated and cohesive way to validate and correlate configurations
+    * `TODO`: allow a gradual introduction of new variable names by automating:
         - introduction of new name for same value (`DB_SECRETS -> DATABASE_SECRETS`)
         - and deprecation of old name (managing deletion of old `DB_SECRETS` references)
 

@@ -31,7 +31,7 @@ Options:
                    Valid types: json, toml, yaml, dotenv, raw.
   --not=<key,>     Exclude specific keys, comma separated.`
 
-	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.4.0")
+	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.4.1")
 	var conf struct {
 		Gen      bool
 		Ctx      string
@@ -45,7 +45,6 @@ Options:
 	}
 
 	err := opts.Bind(&conf)
-	println("NOT: ", conf.Not)
 	ifErr(err)
 	logging.SetLevel(logging.WARNING, "yq")
 	cogs.NoEnc = conf.NoEnc
@@ -56,14 +55,11 @@ Options:
 
 		// --not runs before --keys!
 		// make sure to avoid --not=key_name --key=key_name, ya dingus!
-		fmt.Printf("b: %+v\n", cfgMap)
 		var notList []string
 		if conf.Not != "" {
 			notList = strings.Split(conf.Not, ",")
 			cfgMap = exclude(notList, cfgMap)
 		}
-		fmt.Printf("notList: %+v\n", notList)
-		fmt.Printf("a: %+v\n", cfgMap)
 		if conf.Keys == "" {
 			return cfgMap, nil
 		}
