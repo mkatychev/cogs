@@ -1,6 +1,7 @@
 package cogs
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -14,14 +15,17 @@ import (
 type readType string
 
 const (
-	dotenv   readType = "dotenv"
-	deferred readType = "" // defer file config type to filename suffix
+	readDotenv readType = "dotenv"
+	readJson   readType = "json"
+	deferred   readType = "" // defer file config type to filename suffix
 )
 
 // Validate ensures that a string is a valid readType enum
 func (t readType) Validate() error {
 	switch t {
-	case dotenv:
+	case readDotenv:
+		return nil
+	case readJson:
 		return nil
 	default:
 		return fmt.Errorf("%s is an invalid cfgType", string(t))
@@ -30,8 +34,10 @@ func (t readType) Validate() error {
 
 func (t readType) String() string {
 	switch t {
-	case dotenv:
-		return string(dotenv)
+	case readDotenv:
+		return string(readDotenv)
+	case readJson:
+		return string(readJson)
 	case deferred:
 		return "deferred"
 	default:
@@ -90,6 +96,26 @@ var kindStr = map[yaml.Kind]string{
 	yaml.AliasNode:    "AliasNode",
 }
 
+// NewJsonVisitor returns a visitor object that satisfies the Queryable interface
+// attempting to turn a supposed JSON byte slice into a *yaml.Node object
+func NewJsonVisitor(buf []byte) (Queryable, error) {
+	visitor := &yamlVisitor{
+		rootNode:    &yaml.Node{},
+		cachedNodes: make(map[string]map[string]string),
+		parser:      yqlib.NewYqLib(),
+	}
+
+	tempMap := make(map[string]interface{})
+	json.Unmarshal(buf, &tempMap)
+
+	// deserialize to yaml.Node
+	if err := visitor.rootNode.Encode(tempMap); err != nil {
+		return nil, err
+	}
+
+	return visitor, nil
+}
+
 // NewYamlVisitor returns a visitor object that satisfies the Queryable interface
 func NewYamlVisitor(buf []byte) (Queryable, error) {
 	visitor := &yamlVisitor{
@@ -143,7 +169,7 @@ func (n *yamlVisitor) SetValue(cfg *Cfg) (err error) {
 	}
 
 	// nodes with readType of deferred should be a string to string k/v pair
-	if node.Kind != yaml.MappingNode && cfg.readType != dotenv {
+	if node.Kind != yaml.MappingNode && cfg.readType.Validate() != nil {
 		return fmt.Errorf("%s: NodeKind/readType unsupported: %s/%s",
 			cfg.Name, kindStr[node.Kind], cfg.readType)
 	}
@@ -153,8 +179,13 @@ func (n *yamlVisitor) SetValue(cfg *Cfg) (err error) {
 	cachedMap := make(map[string]string)
 
 	switch cfg.readType {
-	case dotenv:
-		cachedMap, err = unmarshalDotenv(node)
+	case readDotenv:
+		cachedMap, err = visitDotenv(node)
+		if err != nil {
+			return err
+		}
+	case readJson:
+		cachedMap, err = visitJson(node)
 		if err != nil {
 			return err
 		}
@@ -189,7 +220,7 @@ func (n *yamlVisitor) get(subPath string) (*yaml.Node, error) {
 	return nodeCtx[0].Node, nil
 }
 
-func unmarshalDotenv(node *yaml.Node) (map[string]string, error) {
+func visitDotenv(node *yaml.Node) (map[string]string, error) {
 	var strEnv string
 
 	if err := node.Decode(&strEnv); err != nil {
@@ -200,6 +231,24 @@ func unmarshalDotenv(node *yaml.Node) (map[string]string, error) {
 		strEnv = strings.Join(sliceEnv, "\n")
 	}
 	envMap, err := godotenv.Unmarshal(strEnv)
+	if err != nil {
+		return nil, err
+	}
+	return envMap, nil
+}
+
+func visitJson(node *yaml.Node) (map[string]string, error) {
+	var strEnv string
+
+	if err := node.Decode(&strEnv); err != nil {
+		var sliceEnv []string
+		if err := node.Decode(&sliceEnv); err != nil {
+			return nil, fmt.Errorf("Unable to decode node kind: %s to JSON format", kindStr[node.Kind])
+		}
+		strEnv = strings.Join(sliceEnv, "\n")
+	}
+	envMap := make(map[string]string)
+	err := json.Unmarshal([]byte(strEnv), &envMap)
 	if err != nil {
 		return nil, err
 	}

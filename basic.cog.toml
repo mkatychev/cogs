@@ -36,3 +36,13 @@ type = "dotenv"
 # be searched for to retrieve the var1 value
 var1 = {path = [], name = "VAR_1"}
 var2 = {path = [], name = "VAR_2"}
+json_var = {path = [[], "jsonMap"], type = "json", name = "VAR_3"}
+
+[from_json]
+path = "./test_files/json_map.json"
+[from_json.vars]
+var1.path = []
+var2.path = []
+var3.path = []
+var4.path = [[], "nested_object"]
+

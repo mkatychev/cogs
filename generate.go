@@ -103,22 +103,24 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]string, error) {
 		}
 	}
 
-	for path, pathGroup := range pathGroups {
+	for p, pGroup := range pathGroups {
 		// 2. for each distinct Path: generate a Reader object
-		cfgFilePath := g.getCfgFilePath(path)
-		fileBuf, err := pathGroup.loadFile(cfgFilePath)
+		cfgFilePath := g.getCfgFilePath(p)
+		fileBuf, err := pGroup.loadFile(cfgFilePath)
 		if err != nil {
 			return nil, err
 		}
 
 		// 3. create yaml visitor to handle SubPath strings
+		if path.Ext(cfgFilePath) == "json" {
+		}
 		visitor, err := NewYamlVisitor(fileBuf)
 		if err != nil {
 			return nil, err
 		}
 
 		// 4. traverse every Path and possible SubPath retrieving the Cfg.Values associated with it
-		for _, cfg := range pathGroup.cfgs {
+		for _, cfg := range pGroup.cfgs {
 			err := visitor.SetValue(cfg)
 			if err != nil {
 				return nil, err
@@ -368,7 +370,7 @@ func parseCfgMap(varName string, baseCfg *Cfg, cfgVal map[string]interface{}) (*
 // 3. path value  is a two index slice with either index possibly holding an empty slice or string value:
 // -  [[], subpath] - path will be inherited from baseCfg if present
 // -  [path, []] - subpath will be inherited from baseCfg if present
-// -  [path, subpath] - nothing will be inherited as both indices hold strings
+// 4. [path, subpath] - nothing will be inherited as both indices hold strings
 func decodePath(v interface{}, cfg *Cfg, baseCfg *Cfg) error {
 	var ok bool
 	var baseCfgSlice []string

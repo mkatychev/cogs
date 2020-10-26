@@ -31,7 +31,7 @@ Options:
   --out=<type>     Configuration output type [default: json].
                    Valid types: json, toml, yaml, dotenv, raw.`
 
-	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.4.1")
+	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.5.0")
 	var conf struct {
 		Gen      bool
 		Ctx      string
