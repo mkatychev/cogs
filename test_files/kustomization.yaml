@@ -3,4 +3,5 @@ configMapGenerator:
     literals:
       - VAR_1=var1_value
       - VAR_2=var2_value
-
+jsonMap: |
+  { "VAR_3": "var3_value" }
