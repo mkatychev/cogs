@@ -1,0 +1,24 @@
+name = "advanced_service"
+
+# this example mainly deals with how one handles JSON data embedded in another format
+# or as a proper JSON file
+[flat_json]
+path = ["./test_files/json_map.json", "valid_flat_map"]
+[flat_json.vars]
+var1.path = []
+var2.path = []
+var3.path = []
+var4.path = [[], "var4_complex.nested"]
+
+[complex_json]
+path = ["./test_files/json_map.json", "valid_flat_map"]
+[complex_json.vars]
+var1.path = []
+var2.path = []
+var3.path = []
+# '[[], ""]' retains "./test_files/json_map.json" in [] reference in index 0
+# and "" in index 1 disables object traversal
+var4 = {path = [[], ""], name = "var4_complex", type = "json{}"}
+# returns file in entirety as value for k/v pair
+entire_file = {path = [[], ""], type = "whole"}
+

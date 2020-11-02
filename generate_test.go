@@ -18,7 +18,7 @@ type generateTestOut struct {
 	name   string
 	env    string
 	toml   string
-	config map[string]string
+	config map[string]interface{}
 	err    error
 }
 
@@ -28,7 +28,7 @@ func TestGenerate(t *testing.T) {
 			name: "BasicConfig",
 			env:  "local",
 			toml: basicCogToml,
-			config: map[string]string{
+			config: map[string]interface{}{
 				"var":       "var_value",
 				"other_var": "other_var_value",
 			},
@@ -38,7 +38,7 @@ func TestGenerate(t *testing.T) {
 			name: "ConfigWithPath",
 			env:  "qa",
 			toml: basicCogToml,
-			config: map[string]string{
+			config: map[string]interface{}{
 				"enc_var": "|path.enc|./path.enc|subpath|.subpath",
 				"var":     "|path|./path|subpath|.subpath",
 			},
@@ -48,7 +48,7 @@ func TestGenerate(t *testing.T) {
 			name: "ConfigWithInheritedPath",
 			env:  "path_env",
 			toml: basicCogToml,
-			config: map[string]string{
+			config: map[string]interface{}{
 				"var1":     "|path|./path|subpath|.subpath",
 				"var2":     "|path|./path|subpath|.other_subpath",
 				"var3":     "|path|./other_path|subpath|.subpath",
@@ -142,7 +142,7 @@ func (g *testGear) SetName(name string) {
 }
 
 // ResolveMap is used to satisfy the Generator interface
-func (g *testGear) ResolveMap(env RawEnv) (map[string]string, error) {
+func (g *testGear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 	var err error
 
 	g.cfgMap, err = parseEnv(env)
@@ -151,7 +151,7 @@ func (g *testGear) ResolveMap(env RawEnv) (map[string]string, error) {
 	}
 
 	// final output
-	cfgOut := make(map[string]string)
+	cfgOut := make(map[string]interface{})
 
 	for k, cfg := range g.cfgMap {
 		cfgOut[k] = g.ResolveValue(cfg)

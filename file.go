@@ -15,29 +15,39 @@ import (
 type readType string
 
 const (
-	readDotenv readType = "dotenv"
-	readJson   readType = "json"
-	deferred   readType = "" // defer file config type to filename suffix
+	rDotenv      readType = "dotenv"
+	rJSON        readType = "json"
+	rJSONComplex readType = "json{}" // complex json key value pair: {"k":{"v1":[],"v2":[]}}
+	rWhole       readType = "whole"  // indicates to associate the entirety of a file to the given key name
+	deferred     readType = ""       // defer file config type to filename suffix
 )
 
 // Validate ensures that a string is a valid readType enum
 func (t readType) Validate() error {
 	switch t {
-	case readDotenv:
+	case rDotenv:
 		return nil
-	case readJson:
+	case rJSON:
 		return nil
-	default:
+	case rJSONComplex:
+		return nil
+	case rWhole:
+		return nil
+	default: // deferred readType should not be validated
 		return fmt.Errorf("%s is an invalid cfgType", string(t))
 	}
 }
 
 func (t readType) String() string {
 	switch t {
-	case readDotenv:
-		return string(readDotenv)
-	case readJson:
-		return string(readJson)
+	case rDotenv:
+		return string(rDotenv)
+	case rJSON:
+		return string(rJSON)
+	case rJSONComplex:
+		return "complex json"
+	case rWhole:
+		return "whole file"
 	case deferred:
 		return "deferred"
 	default:
@@ -96,9 +106,9 @@ var kindStr = map[yaml.Kind]string{
 	yaml.AliasNode:    "AliasNode",
 }
 
-// NewJsonVisitor returns a visitor object that satisfies the Queryable interface
+// NewJSONVisitor returns a visitor object that satisfies the Queryable interface
 // attempting to turn a supposed JSON byte slice into a *yaml.Node object
-func NewJsonVisitor(buf []byte) (Queryable, error) {
+func NewJSONVisitor(buf []byte) (Queryable, error) {
 	visitor := &yamlVisitor{
 		rootNode:    &yaml.Node{},
 		cachedNodes: make(map[string]map[string]string),
@@ -142,19 +152,15 @@ type yamlVisitor struct {
 func (n *yamlVisitor) SetValue(cfg *Cfg) (err error) {
 	var ok bool
 
-	if cfg.SubPath == "" {
-		node, err := n.get(cfg.Name)
-		if err != nil {
+	// rWhole readType grabs the entire rootNode and assigns cfg.ComplexValue to it
+	if cfg.readType == rWhole {
+		if err = n.rootNode.Decode(&cfg.ComplexValue); err != nil {
 			return err
 		}
-		err = node.Decode(&cfg.Value)
-		if err != nil {
-			return err
-		}
-
 		return nil
 	}
 
+	// check if cfg.SubPath value has been used in a previous SetValue call
 	if valMap, ok := n.cachedNodes[cfg.SubPath]; ok {
 		cfg.Value, ok = valMap[cfg.Name]
 		if !ok {
@@ -163,6 +169,9 @@ func (n *yamlVisitor) SetValue(cfg *Cfg) (err error) {
 		return nil
 	}
 
+	// if SubPath is an empty string, grab the top level value that corresponds
+	// to a key with the string value of cfg.Name and attempt to assign it
+	// to cfg.Value by calling node.Decode
 	node, err := n.get(cfg.SubPath)
 	if err != nil {
 		return err
@@ -174,21 +183,28 @@ func (n *yamlVisitor) SetValue(cfg *Cfg) (err error) {
 			cfg.Name, kindStr[node.Kind], cfg.readType)
 	}
 
-	// for now only support string maps
-	// TODO handle dotenv readType - P0PS-755
 	cachedMap := make(map[string]string)
 
 	switch cfg.readType {
-	case readDotenv:
+	case rDotenv:
 		cachedMap, err = visitDotenv(node)
 		if err != nil {
 			return err
 		}
-	case readJson:
-		cachedMap, err = visitJson(node)
+	case rJSON:
+		cachedMap, err = visitJSON(node)
 		if err != nil {
 			return err
 		}
+	// do not cache complex maps for now
+	case rJSONComplex:
+		complexMap := make(map[string]interface{})
+		err = node.Decode(&complexMap)
+		if err != nil {
+			return err
+		}
+		cfg.ComplexValue = complexMap
+		return nil
 	case deferred:
 		err = node.Decode(&cachedMap)
 		if err != nil {
@@ -237,7 +253,7 @@ func visitDotenv(node *yaml.Node) (map[string]string, error) {
 	return envMap, nil
 }
 
-func visitJson(node *yaml.Node) (map[string]string, error) {
+func visitJSON(node *yaml.Node) (map[string]string, error) {
 	var strEnv string
 
 	if err := node.Decode(&strEnv); err != nil {

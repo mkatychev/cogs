@@ -20,7 +20,7 @@ var1.path = ["./test_files/manifest.yaml", "subpath"]
 var2.path = []
 var3.path = [[], "other_subpath"]
 # dangling variable should return {"some_var": ""} since only name override was defined
-some_var.name = "some_name" 
+some_var.name = "some_name"
 # key value pairs for an encrypted context are defined under <ctx>.enc.vars
 [sops.enc.vars]
 enc_var.path = "./test_files/test.enc.yaml"
@@ -37,12 +37,3 @@ type = "dotenv"
 var1 = {path = [], name = "VAR_1"}
 var2 = {path = [], name = "VAR_2"}
 json_var = {path = [[], "jsonMap"], type = "json", name = "VAR_3"}
-
-[from_json]
-path = "./test_files/json_map.json"
-[from_json.vars]
-var1.path = []
-var2.path = []
-var3.path = []
-var4.path = [[], "nested_object"]
-

@@ -8,9 +8,6 @@ import (
 	"github.com/pelletier/go-toml"
 )
 
-// used to represent Cfg k/v pair at the top level of a file
-const noSubPath = ""
-
 // NoEnc decides whether to output encrypted variables or now
 var NoEnc bool = false
 
@@ -19,14 +16,13 @@ var EnvSubst bool = false
 
 // Cfg holds all the data needed to generate one string key value pair
 type Cfg struct {
-	// Defaults to key name unless explicitly declared
-	Name  string
-	Value string
-	Path  string
-	// default should be Cfg key name
-	SubPath   string
-	encrypted bool
-	readType  readType
+	Name         string      // defaults to key name in cog file unless var.name="other_name" is used
+	Value        string      // Cfg.ComplexValue should be nil if Cfg.Value is a non-empty string("")
+	ComplexValue interface{} // Cfg.Value should be empty string("") if Cfg.ComplexValue is non-nil
+	Path         string      // filepath string where Cfg can be resolved
+	SubPath      string      // object traversal string used to resolve Cfg if not at top level of document (yq syntax)
+	encrypted    bool        // indicates if decryption is needed to resolve Cfg.Value
+	readType     readType
 }
 
 // String holds the string representation of a Cfg struct
@@ -40,12 +36,13 @@ func (c Cfg) String() string {
 }`, c.Name, c.Value, c.Path, c.SubPath, c.encrypted)
 }
 
+// configMap is used by Resolver to output the final k/v associative array
 type configMap map[string]*Cfg
 
 // Resolver is meant to define an object that returns the final string map to be used in a configuration
 // resolving any paths and sub paths defined in the underling config map
 type Resolver interface {
-	ResolveMap(RawEnv) (map[string]string, error)
+	ResolveMap(RawEnv) (map[string]interface{}, error)
 	SetName(string)
 }
 
@@ -68,7 +65,7 @@ func (g *Gear) SetName(name string) {
 
 // ResolveMap outputs the flat associative string, resolving potential filepath pointers
 // held by Cfg objects by calling the .ResolveValue() method
-func (g *Gear) ResolveMap(env RawEnv) (map[string]string, error) {
+func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 	var err error
 
 	g.cfgMap, err = parseEnv(env)
@@ -130,9 +127,16 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]string, error) {
 	}
 
 	// final output
-	cfgOut := make(map[string]string)
+	cfgOut := make(map[string]interface{})
 	for cogName, cfg := range g.cfgMap {
-		cfgOut[cogName] = cfg.Value
+		if cfg.Value != "" && cfg.ComplexValue != nil {
+			return nil, fmt.Errorf("Cfg.Name[%s]: Cfg.Value and Cfg.ComplexValue are both non-empty", cfg.Name)
+		}
+		if cfg.ComplexValue != nil {
+			cfgOut[cogName] = cfg.ComplexValue
+		} else {
+			cfgOut[cogName] = cfg.Value
+		}
 	}
 
 	return cfgOut, nil
@@ -140,7 +144,6 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]string, error) {
 }
 
 func (g *Gear) getCfgFilePath(cfgPath string) string {
-
 	if path.IsAbs(cfgPath) {
 		return cfgPath
 	}
@@ -155,7 +158,7 @@ func (g *Gear) getCfgFilePath(cfgPath string) string {
 type RawEnv map[string]interface{}
 
 // Generate is a top level command that takes an env argument and cogfilepath to return a string map
-func Generate(envName, cogFile string) (map[string]string, error) {
+func Generate(envName, cogFile string) (map[string]interface{}, error) {
 	var tree *toml.Tree
 	var err error
 
@@ -179,7 +182,7 @@ func Generate(envName, cogFile string) (map[string]string, error) {
 
 }
 
-func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]string, error) {
+func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]interface{}, error) {
 	var ok bool
 	var err error
 
