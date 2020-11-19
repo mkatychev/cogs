@@ -14,6 +14,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const CogsVersion = "0.5.0"
+
 func main() {
 	usage := `
 COGS COnfiguration manaGement S
@@ -31,7 +33,8 @@ Options:
   --out=<type>     Configuration output type [default: json].
                    Valid types: json, toml, yaml, dotenv, raw.`
 
-	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "0.5.0")
+	opts, err := docopt.ParseArgs(usage, os.Args[1:], CogsVersion)
+	ifErr(err)
 	var conf struct {
 		Gen      bool
 		Ctx      string
@@ -44,7 +47,7 @@ Options:
 		EnvSubst bool `docopt:"--envsubst"`
 	}
 
-	err := opts.Bind(&conf)
+	err = opts.Bind(&conf)
 	ifErr(err)
 	logging.SetLevel(logging.WARNING, "yq")
 	cogs.NoEnc = conf.NoEnc
@@ -87,32 +90,39 @@ Options:
 
 	switch {
 	case conf.Gen:
-		cfgMap, err := cogs.Generate(conf.Ctx, conf.File)
+		var format cogs.Format
+		var b []byte
+		var output string
+
+		if format = cogs.Format(conf.Output); format.Validate() != nil {
+			fmt.Fprintln(os.Stderr, fmt.Errorf("invalid arg: --out="+conf.Output))
+			os.Exit(1)
+		}
+
+		cfgMap, err := cogs.Generate(conf.Ctx, conf.File, format)
 		ifErr(err)
+
 		cfgMap, err = filterCfgMap(cfgMap)
 		ifErr(err)
 
-		var b []byte
-		var output string
-		switch conf.Output {
-		case "json":
+		switch format {
+		case cogs.JSON:
 			b, err = json.MarshalIndent(cfgMap, "", "  ")
 			output = string(b)
-		case "yaml":
+		case cogs.YAML:
 			b, err = yaml.Marshal(cfgMap)
 			output = string(b)
-		case "toml":
+		case cogs.TOML:
 			b, err = toml.Marshal(cfgMap)
 			output = string(b)
-		case "dotenv":
+		case cogs.Dotenv:
 			// convert all key values to uppercase
 			output, err = godotenv.Marshal(upperKeys(cfgMap))
-		case "raw":
+		case cogs.Raw:
 			output = getRawValue(cfgMap)
-		default:
-			err = fmt.Errorf("invalid arg: --out=" + conf.Output)
 		}
 		ifErr(err)
-		fmt.Fprintln(os.Stdout, string(output))
+
+		fmt.Fprintln(os.Stdout, output)
 	}
 }

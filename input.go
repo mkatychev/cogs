@@ -15,23 +15,20 @@ import (
 type readType string
 
 const (
+	// read format overrides
 	rDotenv      readType = "dotenv"
 	rJSON        readType = "json"
 	rJSONComplex readType = "json{}" // complex json key value pair: {"k":{"v1":[],"v2":[]}}
-	rWhole       readType = "whole"  // indicates to associate the entirety of a file to the given key name
-	deferred     readType = ""       // defer file config type to filename suffix
+
+	// read format derived from filepath suffix
+	rWhole   readType = "whole" // indicates to associate the entirety of a file to the given key name
+	deferred readType = ""      // defer file config type to filename suffix
 )
 
 // Validate ensures that a string is a valid readType enum
 func (t readType) Validate() error {
 	switch t {
-	case rDotenv:
-		return nil
-	case rJSON:
-		return nil
-	case rJSONComplex:
-		return nil
-	case rWhole:
+	case rDotenv, rJSON, rJSONComplex, rWhole:
 		return nil
 	default: // deferred readType should not be validated
 		return fmt.Errorf("%s is an invalid cfgType", string(t))
@@ -76,7 +73,9 @@ func readFile(filePath string) ([]byte, error) {
 	var size int64 = stats.Size()
 	bytes := make([]byte, size)
 
-	_, err = file.Read(bytes)
+	if _, err = file.Read(bytes); err != nil {
+		return nil, err
+	}
 
 	return bytes, nil
 
@@ -116,7 +115,9 @@ func NewJSONVisitor(buf []byte) (Queryable, error) {
 	}
 
 	tempMap := make(map[string]interface{})
-	json.Unmarshal(buf, &tempMap)
+	if err := json.Unmarshal(buf, &tempMap); err != nil {
+		return nil, err
+	}
 
 	// deserialize to yaml.Node
 	if err := visitor.rootNode.Encode(tempMap); err != nil {

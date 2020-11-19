@@ -52,10 +52,10 @@ type Resolver interface {
 // rather than a gear object. The term "switching gears" is an apt representation
 // of how one Cog manifest file can have many contexts/environments
 type Gear struct {
-	Name   string
-	cfgMap configMap
-	// filepath of file.cog.toml
-	filePath string
+	Name       string
+	cfgMap     configMap
+	filePath   string // filepath of file.cog.toml
+	outputType Format // desired output type of the marshalled Gear
 }
 
 // SetName sets the gear name to the provided string
@@ -108,10 +108,13 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 			return nil, err
 		}
 
-		// 3. create yaml visitor to handle SubPath strings
-		if path.Ext(cfgFilePath) == "json" {
+		newVisitor := NewYamlVisitor
+		// 3. create visitor to handle SubPath strings
+		// all read files should resolve to a yaml.Node, this includes JSON, TOML, and dotenv
+		if FormatForPath(cfgFilePath) == JSON {
+			newVisitor = NewJSONVisitor
 		}
-		visitor, err := NewYamlVisitor(fileBuf)
+		visitor, err := newVisitor(fileBuf)
 		if err != nil {
 			return nil, err
 		}
@@ -129,13 +132,9 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 	// final output
 	cfgOut := make(map[string]interface{})
 	for cogName, cfg := range g.cfgMap {
-		if cfg.Value != "" && cfg.ComplexValue != nil {
-			return nil, fmt.Errorf("Cfg.Name[%s]: Cfg.Value and Cfg.ComplexValue are both non-empty", cfg.Name)
-		}
-		if cfg.ComplexValue != nil {
-			cfgOut[cogName] = cfg.ComplexValue
-		} else {
-			cfgOut[cogName] = cfg.Value
+		cfgOut[cogName], err = OutputCfg(cfg, g.outputType)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -158,9 +157,13 @@ func (g *Gear) getCfgFilePath(cfgPath string) string {
 type RawEnv map[string]interface{}
 
 // Generate is a top level command that takes an env argument and cogfilepath to return a string map
-func Generate(envName, cogFile string) (map[string]interface{}, error) {
+func Generate(envName, cogFile string, outputType Format) (map[string]interface{}, error) {
 	var tree *toml.Tree
 	var err error
+
+	if err = outputType.Validate(); err != nil {
+		return nil, err
+	}
 
 	if EnvSubst {
 		substFile, err := envSubFile(cogFile)
@@ -171,14 +174,13 @@ func Generate(envName, cogFile string) (map[string]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return generate(envName, tree, &Gear{filePath: cogFile})
+	} else {
+		tree, err = toml.LoadFile(cogFile)
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	tree, err = toml.LoadFile(cogFile)
-	if err != nil {
-		return nil, err
-	}
-	return generate(envName, tree, &Gear{filePath: cogFile})
+	return generate(envName, tree, &Gear{filePath: cogFile, outputType: outputType})
 
 }
 
@@ -195,7 +197,9 @@ func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]interf
 	if !ok || name == "" {
 		return nil, fmt.Errorf("manifest.name string value must be present as a string")
 	}
-	tree.Delete("name")
+	if err = tree.Delete("name"); err != nil {
+		return nil, err
+	}
 
 	gear.SetName(name)
 
