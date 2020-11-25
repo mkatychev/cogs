@@ -2,7 +2,6 @@ name = "basic_example"
 
 # key value pairs for a context are defined under <ctx>.vars
 [docker.vars]
-web_merge_prefix = "${WEB_MERGE_PREFIX:-${USER^}}_"
 var = "var_value"
 other_var = "other_var_value"
 

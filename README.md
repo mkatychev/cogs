@@ -6,7 +6,7 @@ With `go`:
 
 Without `go`, `PL`atform can be Linux/Windows/Darwin:
 ```sh
-PL="Darwin" VR="0.5.0" \
+PL="Darwin" VR="0.6.0" \
   curl -SLk \ 
   "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
@@ -154,10 +154,10 @@ DATABASE_SECRETS: "secret_pw"
 | __Expression__                  | __Meaning__    |
 | -----------------               | -------------- |
 | `${var}`                        | Value of var (same as `$var`)
-| `${var-`${DEFAULT}`}`           | If var not set, evaluate expression as `${DEFAULT}`
-| `${var:-`${DEFAULT}`}`          | If var not set or is empty, evaluate expression as `${DEFAULT}`
-| `${var=`${DEFAULT}`}`           | If var not set, evaluate expression as `${DEFAULT}`
-| `${var:=`${DEFAULT}`}`          | If var not set or is empty, evaluate expression as `${DEFAULT}`
+| `${var-${DEFAULT}}`             | If var not set, evaluate expression as `${DEFAULT}`
+| `${var:-${DEFAULT}}`            | If var not set or is empty, evaluate expression as `${DEFAULT}`
+| `${var=${DEFAULT}}`             | If var not set, evaluate expression as `${DEFAULT}`
+| `${var:=${DEFAULT}}`            | If var not set or is empty, evaluate expression as `${DEFAULT}`
 | `$$var`                         | Escape expressions. Result will be `$var`.
 | `${var^^}`                      | Uppercase value of `$var`
 | `${var,,}`                      | Lowercase value of `$var`
