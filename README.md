@@ -6,7 +6,7 @@ With `go`:
 
 Without `go`, `PL`atform can be Linux/Windows/Darwin:
 ```sh
-PL="Darwin" VR="0.4.1" \
+PL="Darwin" VR="0.5.0" \
   curl -SLk \ 
   "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
@@ -17,7 +17,7 @@ PL="Darwin" VR="0.4.1" \
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs gen <ctx> <cog-file> [--out=<type>] [--keys=<key,>] [--not=<key,>] [-n] [-e]
+  cogs gen <ctx> <cog-file> [options]
 
 Options:
   -h --help        Show this screen.
@@ -27,13 +27,17 @@ Options:
   --keys=<key,>    Include specific keys, comma separated.
   --not=<key,>     Exclude specific keys, comma separated.
   --out=<type>     Configuration output type [default: json].
-                   Valid types: json, toml, yaml, dotenv, raw.
+                   <type>: json, toml, yaml, dotenv, raw.
+  
+  --export, -x     If --out=dotenv: Prepends "export " to each line.
+  --preserve, -p   If --out=dotenv: Preserves variable casing.
+  --sep=<sep>      If --out=raw:    Delimits values with a <sep>arator.
 ```
 
 ## annotated spec:
 
 ```toml
-name = "basic_service"
+name = "basic_example"
 
 # key value pairs for a context are defined under <ctx>.vars
 [docker.vars]
@@ -54,11 +58,13 @@ path = ["./test_files/manifest.yaml", "subpath"]
 var1.path = ["./test_files/manifest.yaml", "subpath"]
 var2.path = []
 var3.path = [[], "other_subpath"]
-# dangling variable should return 'some_var = ""' since only name override was defined
-some_var.name = "some_name" 
+# dangling variable should return {"empty_var": ""} since only name override was defined
+empty_var.name = "some_name"
 # key value pairs for an encrypted context are defined under <ctx>.enc.vars
 [sops.enc.vars]
-enc_var.path = "./test_files/test.enc.yaml"
+yaml_enc.path = "./test_files/test.enc.yaml"
+dotenv_enc = {path = "./test_files/test.enc.env", name = "DOTENV_ENC"}
+json_enc.path = "./test_files/test.enc.json"
 
 [kustomize]
 path = ["./test_files/kustomization.yaml", "configMapGenerator.[0].literals"]
@@ -71,6 +77,7 @@ type = "dotenv"
 # be searched for to retrieve the var1 value
 var1 = {path = [], name = "VAR_1"}
 var2 = {path = [], name = "VAR_2"}
+var3 = {path = [[], "jsonMap"], type = "json"}
 ```
 
 ## goals:
@@ -141,7 +148,32 @@ DATABASE_SECRETS: "secret_pw"
 
 [TOML spec](https://toml.io/en/v1.0.0-rc.3#keyvalue-pair)
 
-[envsubst](https://www.gnu.org/software/gettext/manual/html_node/envsubst-Invocation.html)
+[envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html) cheatsheet:
+
+
+| __Expression__                  | __Meaning__    |
+| -----------------               | -------------- |
+| `${var}`                        | Value of var (same as `$var`)
+| `${var-`${DEFAULT}`}`           | If var not set, evaluate expression as `${DEFAULT}`
+| `${var:-`${DEFAULT}`}`          | If var not set or is empty, evaluate expression as `${DEFAULT}`
+| `${var=`${DEFAULT}`}`           | If var not set, evaluate expression as `${DEFAULT}`
+| `${var:=`${DEFAULT}`}`          | If var not set or is empty, evaluate expression as `${DEFAULT}`
+| `$$var`                         | Escape expressions. Result will be `$var`.
+| `${var^^}`                      | Uppercase value of `$var`
+| `${var,,}`                      | Lowercase value of `$var`
+| `${#var}`                       | Value of `$var` string length
+| `${var^}`                       |
+| `${var,}`                       |
+| `${var:position}`               |
+| `${var:position:length}`        |
+| `${var#substring}`              |
+| `${var##substring}`             |
+| `${var%substring}`              |
+| `${var%%substring}`             |
+| `${var/substring/replacement}`  |
+| `${var//substring/replacement}` |
+| `${var/#substring/replacement}` |
+| `${var/%substring/replacement}` |
 
 
 Notes:

@@ -1,24 +1,49 @@
-name = "advanced_service"
+name = "advanced_example"
+
+[base.vars]
+var1 = "var1_value"
+var2 = "var2_value"
+json = '''
+{
+  "var3": "var3_value",
+  "some_var": "some_value"
+}
+'''
+
+# inheritor pattern
+# this allows explicit inheritance from base variables without adding more
+# special syntax since the generation path logic does not change
+[inheritor]
+# "." - a single period is a reserved filepath string
+# it is used to self-reference the cog file
+# this helps avoid breaking generation when the cog file is moved or renamed
+path = [".", "base.vars"]
+[inheritor.vars]
+var1.path = []
+var2.path = []
+var3 = {path = [[], "base.vars.json"], type ="json"}
 
 # this example mainly deals with how one handles JSON data embedded in another format
 # or as a proper JSON file
 [flat_json]
-path = ["./test_files/json_map.json", "valid_flat_map"]
+path = ["./test_files/json_map.json", "flat_map"]
 [flat_json.vars]
 var1.path = []
 var2.path = []
 var3.path = []
-var4.path = [[], "var4_complex.nested"]
+var4.path = [[], "complex_map.nested"]
 
 [complex_json]
-path = ["./test_files/json_map.json", "valid_flat_map"]
+path = ["./test_files/json_map.json", "flat_map"]
 [complex_json.vars]
-var1.path = []
-var2.path = []
-var3.path = []
+# returns file in entirety as value for k/v pair
+entire_file = {path = [[],""], type = "whole"}
 # '[[], ""]' retains "./test_files/json_map.json" in [] reference in index 0
 # and "" in index 1 disables object traversal
-var4 = {path = [[], ""], name = "var4_complex", type = "json{}"}
-# returns file in entirety as value for k/v pair
-entire_file = {path = [[], ""], type = "whole"}
-
+complex_map = {path = [[],""], type = "json{}"}
+# returns just the array element without an overlying associative array
+# specifying subpath "complex_map.array" along with the read type of whole
+# allows the traversed element to be returned without casting
+array = {path = [[],"complex_map.array"], type = "whole"}
+# retrieves a complex object from a string held in a yaml file
+complex_var = {path = ["./test_files/kustomization.yaml", "complexJsonMap"], type = "json{}"}

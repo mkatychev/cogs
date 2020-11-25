@@ -2,6 +2,7 @@ package cogs
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -77,13 +78,13 @@ func TestGenerate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tree, err := toml.Load(tc.toml)
 			if err != nil {
-				t.Fatalf("toml.Load: %s", err)
+				t.Errorf("toml.Load: %s", err)
 			}
 			cogName := tree.Get("name").(string)
 			config, err := generate(tc.env, tree, &testGear{})
-
-			if diff := cmp.Diff(tc.err, err, AllowUnexported); diff != "" {
-				t.Fatalf("toml[%s], env[%s]: (-expected error +actual error)\n-\t%s\n+\t%s", cogName, tc.env, tc.err, err)
+			// TODO implement (err cogError) Unwrap() error { return err.err } so that "%w" directive is used
+			if diff := cmp.Diff(fmt.Errorf("%s", tc.err), fmt.Errorf("%s", err), AllowUnexported); diff != "" {
+				t.Errorf("toml[%s], env[%s]: (-expected err +actual err)\n-%s", cogName, tc.env, diff)
 			}
 			if diff := cmp.Diff(tc.config, config, AllowUnexported); diff != "" {
 				t.Errorf("toml[%s], env[%s]: (-expected config +actual config):\n%s", cogName, tc.env, diff)

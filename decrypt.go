@@ -7,7 +7,7 @@ import (
 )
 
 func decryptFile(filePath string) ([]byte, error) {
-	sec, err := decrypt.File(filePath, "yaml")
+	sec, err := decrypt.File(filePath, "")
 	if err != nil {
 		return nil, fmt.Errorf("cannot decrypt file: %s", err)
 	}

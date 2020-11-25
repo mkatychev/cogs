@@ -1,0 +1,17 @@
+name = "envsubst_example"
+
+# key value pairs for a context are defined under <ctx>.vars
+[envsubst.vars]
+lowercase_all = "${HOME,,}"
+uppercase_all = "${HOME^^}"
+# # and ## work from the left end (beginning) of string,
+lstrip_greedy = "${HOME}"
+lstrip_nongreedy = "${HOME##/}"
+lstrip_wildcard_greedy = "${HOME#/*/}"
+lstrip_wildcard_nongreedy = "${HOME##/*/}"
+# % and %% work from the right end.
+rstrip_greedy = "${HOME}"
+rstrip_nongreedy = "${HOME%%/}"
+rstrip_wildcard_greedy = "${HOME%/*/}"
+rstrip_wildcard_nongreedy = "${HOME%%/*/}"
+length = "${#HOME}"

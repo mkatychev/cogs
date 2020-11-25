@@ -6,12 +6,13 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Format represents the final marshalled k/v output type from a resolved Gear
 type Format string
 
+// Formats for respective object notation
 const (
 	JSON   Format = "json"
 	YAML   Format = "yaml"
@@ -30,6 +31,7 @@ func (t Format) Validate() error {
 	}
 }
 
+// OutputCfg returns the corresponding value for a given Cfg struct
 func OutputCfg(cfg *Cfg, format Format) (interface{}, error) {
 	if cfg.Value != "" && cfg.ComplexValue != nil {
 		return nil, fmt.Errorf("Cfg.Name[%s]: Cfg.Value and Cfg.ComplexValue are both non-empty", cfg.Name)

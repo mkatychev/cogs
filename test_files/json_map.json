@@ -1,12 +1,16 @@
 {
-  "valid_flat_map": {
+  "flat_map": {
     "var1": "var1_value",
     "var2": "var2_value",
     "var3": "var3_value"
   },
-  "var4_complex": {
+  "complex_map": {
     "nested": {
       "var4": "var4_value"
-    }
+    },
+    "array": [
+      "value",
+      "value"
+    ]
   }
 }

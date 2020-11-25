@@ -108,11 +108,18 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 			return nil, err
 		}
 
-		newVisitor := NewYamlVisitor
+		newVisitor := NewYAMLVisitor
 		// 3. create visitor to handle SubPath strings
 		// all read files should resolve to a yaml.Node, this includes JSON, TOML, and dotenv
-		if FormatForPath(cfgFilePath) == JSON {
+		switch FormatForPath(cfgFilePath) {
+		case JSON:
 			newVisitor = NewJSONVisitor
+		case YAML:
+			newVisitor = NewYAMLVisitor
+		case TOML:
+			newVisitor = NewTOMLVisitor
+		case Dotenv:
+			newVisitor = NewDotenvVisitor
 		}
 		visitor, err := newVisitor(fileBuf)
 		if err != nil {
@@ -123,7 +130,7 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 		for _, cfg := range pGroup.cfgs {
 			err := visitor.SetValue(cfg)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%s: %w", cfg.Name, err)
 			}
 
 		}
@@ -143,6 +150,9 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 }
 
 func (g *Gear) getCfgFilePath(cfgPath string) string {
+	if cfgPath == "." {
+		return g.filePath
+	}
 	if path.IsAbs(cfgPath) {
 		return cfgPath
 	}
@@ -215,7 +225,7 @@ func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]interf
 
 	genOut, err := gear.ResolveMap(env)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %s", envName, err)
+		return nil, fmt.Errorf("%s: %w", envName, err)
 	}
 
 	return genOut, nil
@@ -286,7 +296,7 @@ func decodeEnv(cfgMap configMap, env RawEnv) error {
 		case map[string]interface{}:
 			cfgMap[varName], err = parseCfgMap(varName, &baseCfg, cfgType)
 			if err != nil {
-				return fmt.Errorf("%s: %s", varName, err)
+				return fmt.Errorf("%s: %w", varName, err)
 			}
 		default:
 			return fmt.Errorf("%s: %s is an unsupported type", varName, cfgType)
@@ -335,7 +345,7 @@ func parseCfgMap(varName string, baseCfg *Cfg, cfgVal map[string]interface{}) (*
 			}
 		case "path":
 			if err := decodePath(v, &cfg, baseCfg); err != nil {
-				return nil, fmt.Errorf("%s.path: %s", varName, err)
+				return nil, fmt.Errorf("%s.path: %w", varName, err)
 			}
 		case "type":
 			rType, ok := v.(string)
@@ -413,6 +423,7 @@ func decodePath(v interface{}, cfg *Cfg, baseCfg *Cfg) error {
 		str, ok := v.(string)
 		if ok {
 			decodedSlice[i] = str
+
 			continue
 		}
 		slice, ok := v.([]interface{})

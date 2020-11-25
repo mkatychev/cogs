@@ -13,5 +13,33 @@ jobs:
         go-version: 1.15.x
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Test
+    - name: unit
       run: go test ./...
+  integration-test:
+    strategy:
+      matrix:
+        out: [json, toml, yaml, dotenv, raw]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.x
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Import GPG Key
+      run: gpg --import ./test_files/sops_functional_tests_key.asc
+    - name: gen docker
+      run: go run ./cmd/cogs gen docker basic.cog.toml --out=${{ matrix.out }}
+    - name: gen sops
+      run: go run ./cmd/cogs gen sops basic.cog.toml --out=${{ matrix.out }}
+    - name: gen kustomize
+      run: go run ./cmd/cogs gen kustomize basic.cog.toml --out=${{ matrix.out }}
+    - name: gen inheritor
+      run: go run ./cmd/cogs gen inheritor advanced.cog.toml --out=${{ matrix.out }}
+    - name: gen flat_json
+      run: go run ./cmd/cogs gen flat_json advanced.cog.toml --out=${{ matrix.out }}
+    - name: gen complex_json
+      run: go run ./cmd/cogs gen complex_json advanced.cog.toml --out=${{ matrix.out }}
+    - name: gen envsubst
+      run: go run ./cmd/cogs gen envsubst envsubst.cog.toml --out=${{ matrix.out }}

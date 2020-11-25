@@ -3,5 +3,10 @@ configMapGenerator:
     literals:
       - VAR_1=var1_value
       - VAR_2=var2_value
-jsonMap: |
-  { "VAR_3": "var3_value" }
+jsonMap: { "var3": "var3_value" }
+complexJsonMap: |
+  {
+    "complex_var": {
+      "nested": ["value", "value"]
+    }
+  }
