@@ -406,7 +406,7 @@ func decodePath(v interface{}, cfg *Cfg, baseCfg *Cfg) error {
 	// cast to interface slice first since v.([]string) fails in one pass
 	pathSlice, ok := v.([]interface{})
 	if !ok {
-		return fmt.Errorf("path must be an array, slice of strings/empty arrays, or an empty array")
+		return fmt.Errorf("path must be a string, array of strings/empty arrays, or an empty array")
 	}
 	// if path maps to an empty slice: var.path = []
 	if len(pathSlice) == 0 && baseCfg != nil {

@@ -124,14 +124,14 @@ type Visitor interface {
 // NewJSONVisitor returns a visitor object that satisfies the Visitor interface
 // attempting to turn a supposed JSON byte slice into a *yaml.Node object
 func NewJSONVisitor(buf []byte) (Visitor, error) {
-	tempMap := make(map[string]interface{})
-	if err := json.Unmarshal(buf, &tempMap); err != nil {
+	var i interface{}
+	if err := json.Unmarshal(buf, &i); err != nil {
 		return nil, err
 	}
 	// deserialize to yaml.Node
 	rootNode := &yaml.Node{}
-	if err := rootNode.Encode(tempMap); err != nil {
-		return nil, err
+	if err := rootNode.Encode(i); err != nil {
+		return nil, errors.Wrap(err, "NewJSONVisitor")
 	}
 	return newVisitor(rootNode), nil
 }
@@ -141,7 +141,7 @@ func NewYAMLVisitor(buf []byte) (Visitor, error) {
 	// deserialize to yaml.Node
 	rootNode := &yaml.Node{}
 	if err := yaml.Unmarshal(buf, rootNode); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "NewYAMLVisitor")
 	}
 	return newVisitor(rootNode), nil
 }
@@ -149,13 +149,13 @@ func NewYAMLVisitor(buf []byte) (Visitor, error) {
 // NewTOMLVisitor returns a visitor object that satisfies the Visitor interface
 // attempting to turn a supposed TOML byte slice into a *yaml.Node object
 func NewTOMLVisitor(buf []byte) (Visitor, error) {
-	tempMap := make(map[string]interface{})
-	if err := toml.Unmarshal(buf, &tempMap); err != nil {
+	var i interface{}
+	if err := toml.Unmarshal(buf, &i); err != nil {
 		return nil, errors.Wrap(err, "NewTOMLVisitor")
 	}
 	// deserialize to yaml.Node
 	rootNode := &yaml.Node{}
-	if err := rootNode.Encode(tempMap); err != nil {
+	if err := rootNode.Encode(i); err != nil {
 		return nil, err
 	}
 	return newVisitor(rootNode), nil
@@ -212,7 +212,16 @@ func (vi *visitor) SetValue(cfg *Cfg) (err error) {
 		return err
 	}
 
-	if node.Kind != yaml.MappingNode && node.Kind != yaml.ScalarNode && cfg.readType.Validate() != nil {
+	supporedKind := func() bool {
+		for _, kind := range []yaml.Kind{yaml.MappingNode, yaml.ScalarNode, yaml.SequenceNode} {
+			if node.Kind == kind {
+				return true
+			}
+		}
+		return false
+	}()
+
+	if !supporedKind {
 		return fmt.Errorf("%s: NodeKind/readType unsupported: %s/%s",
 			cfg.Name, kindStr[node.Kind], cfg.readType)
 	}
@@ -231,7 +240,7 @@ func (vi *visitor) SetValue(cfg *Cfg) (err error) {
 		err = fmt.Errorf("unsupported readType: %s", cfg.readType)
 	}
 	if err != nil {
-		return err
+		return errors.Wrap(err, "SetValue")
 	}
 
 	// 4. add value to cache
@@ -277,7 +286,7 @@ func (vi *visitor) visitComplex(cfg *Cfg) (err error) {
 		err = fmt.Errorf("unsupported readType: %s", cfg.readType)
 	}
 	if err != nil {
-		return err
+		return errors.Wrap(err, "visitComplex")
 	}
 	// 4. add value to cache
 	vi.visitedComplex[cfg.SubPath] = i

@@ -36,6 +36,7 @@ var4.path = [[], "complex_map.nested"]
 [complex_json]
 path = ["./test_files/json_map.json", "flat_map"]
 [complex_json.vars]
+array_json = {path="./test_files/array.json", type="whole"}
 # returns file in entirety as value for k/v pair
 entire_file = {path = [[],""], type = "whole"}
 # '[[], ""]' retains "./test_files/json_map.json" in [] reference in index 0
