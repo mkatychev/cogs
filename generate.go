@@ -55,6 +55,7 @@ type Gear struct {
 	Name       string
 	cfgMap     configMap
 	filePath   string // filepath of file.cog.toml
+	fileValue  []byte // byte representation of TOML file
 	outputType Format // desired output type of the marshalled Gear
 }
 
@@ -90,7 +91,9 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 	for _, cfg := range g.cfgMap {
 		if cfg.Path != "" {
 			if _, ok := pathGroups[cfg.Path]; !ok {
+				// read plaintext file into bytes
 				loadFileFunc := readFile
+				// read encrypted file into bytes
 				if cfg.encrypted {
 					loadFileFunc = decryptFile
 				}
@@ -101,10 +104,13 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 	}
 
 	for p, pGroup := range pathGroups {
+		var fileBuf []byte
 		// 2. for each distinct Path: generate a Reader object
 		cfgFilePath := g.getCfgFilePath(p)
-		fileBuf, err := pGroup.loadFile(cfgFilePath)
-		if err != nil {
+		// if cfg.Path references the cog file, return the already read (and envsubst applied) value
+		if p == selfPath {
+			fileBuf = g.fileValue
+		} else if fileBuf, err = pGroup.loadFile(cfgFilePath); err != nil {
 			return nil, err
 		}
 
@@ -150,7 +156,7 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 }
 
 func (g *Gear) getCfgFilePath(cfgPath string) string {
-	if cfgPath == "." {
+	if cfgPath == selfPath {
 		return g.filePath
 	}
 	if path.IsAbs(cfgPath) {
@@ -167,7 +173,7 @@ func (g *Gear) getCfgFilePath(cfgPath string) string {
 type RawEnv map[string]interface{}
 
 // Generate is a top level command that takes an env argument and cogfilepath to return a string map
-func Generate(envName, cogFile string, outputType Format) (map[string]interface{}, error) {
+func Generate(envName, cogPath string, outputType Format) (map[string]interface{}, error) {
 	var tree *toml.Tree
 	var err error
 
@@ -175,27 +181,24 @@ func Generate(envName, cogFile string, outputType Format) (map[string]interface{
 		return nil, err
 	}
 
+	b, err := readFile(cogPath)
+	if err != nil {
+		return nil, err
+	}
+
 	if EnvSubst {
-		substFile, err := envSubFile(cogFile)
-		if err != nil {
-			return nil, err
-		}
-		tree, err = toml.Load(substFile)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		tree, err = toml.LoadFile(cogFile)
-		if err != nil {
+		if b, err = envSubBytes(b); err != nil {
 			return nil, err
 		}
 	}
-	return generate(envName, tree, &Gear{filePath: cogFile, outputType: outputType})
+	if tree, err = toml.LoadBytes(b); err != nil {
+		return nil, err
+	}
+	return generate(envName, tree, &Gear{filePath: cogPath, fileValue: b, outputType: outputType})
 
 }
 
 func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]interface{}, error) {
-	var ok bool
 	var err error
 
 	type rawManifest struct {

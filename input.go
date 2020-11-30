@@ -14,6 +14,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// "." - a single period is a reserved filepath string
+// it is used to self-reference the cog file
+// this helps avoid breaking generation when the cog file is moved or renamed
+const selfPath string = "."
+
 type readType string
 
 const (
@@ -78,32 +83,27 @@ func readFile(filePath string) ([]byte, error) {
 
 }
 
-// envSubFile returns a file with environmental substitution applied, call tldr for more:
+// envSubBytes returns a TOML string with environmental substitution applied, call tldr for more:
 // $ tldr envsubst
-func envSubFile(filePath string) (string, error) {
-	bytes, err := readFile(filePath)
-	if err != nil {
-		return "", err
-	}
-
+func envSubBytes(bytes []byte) ([]byte, error) {
 	// ------------------------------------------------------------------------
 	// strip comments so we dont do comment substitution by tokenizing the file
 	// and reemiting the file as bytes  ¯\_(ツ)_/¯
 	tree, err := toml.LoadBytes(bytes)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	noCommentTree, err := toml.Marshal(tree)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	// ------------------------------------------------------------------------
 
 	substEnv, err := envsubst.EvalEnv(string(noCommentTree))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return substEnv, nil
+	return []byte(substEnv), nil
 }
 
 // kindStr maps the yaml node types to strings for error messaging
