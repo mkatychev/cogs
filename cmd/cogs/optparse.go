@@ -19,7 +19,7 @@ func ifErr(err error) {
 	}
 }
 
-func getRawValue(cfgMap map[string]interface{}, delimiter string) string {
+func getRawValue(cfgMap map[string]interface{}, keyList []string, delimiter string) (string, error) {
 	var values []string
 	// Interpret --sep='\n' and --sep='\t' as newlines and tabs
 	switch delimiter {
@@ -28,11 +28,15 @@ func getRawValue(cfgMap map[string]interface{}, delimiter string) string {
 	case "\\t":
 		delimiter = "\t"
 	}
-	// for now, no delimiter
-	for _, v := range cfgMap {
-		values = append(values, fmt.Sprintf("%s", v))
+	// it's important for raw to preserve the order of keys specified
+	for _, v := range keyList {
+		keyName, ok := cfgMap[v]
+		if !ok {
+			return "", fmt.Errorf("getRawValue: key %s is missing from cfgMap")
+		}
+		values = append(values, fmt.Sprintf("%s", keyName))
 	}
-	return strings.Join(values, delimiter)
+	return strings.Join(values, delimiter), nil
 
 }
 

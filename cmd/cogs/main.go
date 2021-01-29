@@ -102,7 +102,8 @@ func main() {
 			// convert all key values to uppercase
 			output, err = godotenv.Marshal(modKeys(cfgMap, modFuncs...))
 		case cogs.Raw:
-			output = getRawValue(cfgMap, conf.Delimiter)
+			// it's important for raw to preserve the order of keys specified
+			output, err = getRawValue(cfgMap, strings.Split(conf.Keys, ","), conf.Delimiter)
 		}
 		ifErr(err)
 

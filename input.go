@@ -30,6 +30,7 @@ const (
 	// read format derived from filepath suffix
 	rWhole   readType = "whole" // indicates to associate the entirety of a file to the given key name
 	deferred readType = ""      // defer file config type to filename suffix
+	rGear    readType = "gear"  // treat TOML table as a nested gear object
 )
 
 // Validate ensures that a string is a valid readType enum
@@ -52,6 +53,8 @@ func (t readType) String() string {
 		return "complex json"
 	case rWhole:
 		return "whole file"
+	case rGear:
+		return "gear object"
 	case deferred:
 		return "deferred"
 	default:
@@ -194,7 +197,10 @@ type visitor struct {
 
 // SetValue assigns the Value for a given Cfg using the existing Cfg.Path and Cfg.SubPath
 func (vi *visitor) SetValue(cfg *Cfg) (err error) {
-	if cfg.readType == rWhole || cfg.readType == rJSONComplex {
+	switch cfg.readType {
+	case rWhole, rJSONComplex:
+		return vi.visitComplex(cfg)
+	case rGear:
 		return vi.visitComplex(cfg)
 	}
 
@@ -212,7 +218,7 @@ func (vi *visitor) SetValue(cfg *Cfg) (err error) {
 		return err
 	}
 
-	supporedKind := func() bool {
+	supportedKind := func() bool {
 		for _, kind := range []yaml.Kind{yaml.MappingNode, yaml.ScalarNode, yaml.SequenceNode} {
 			if node.Kind == kind {
 				return true
@@ -221,7 +227,7 @@ func (vi *visitor) SetValue(cfg *Cfg) (err error) {
 		return false
 	}()
 
-	if !supporedKind {
+	if !supportedKind {
 		return fmt.Errorf("%s: NodeKind/readType unsupported: %s/%s",
 			cfg.Name, kindStr[node.Kind], cfg.readType)
 	}
