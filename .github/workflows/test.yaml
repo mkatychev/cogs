@@ -43,6 +43,8 @@ jobs:
       run: go run ./cmd/cogs gen kustomize basic.cog.toml --out=${{ matrix.out }}
     - name: gen inheritor
       run: go run ./cmd/cogs gen inheritor advanced.cog.toml --out=${{ matrix.out }}
+    - name: gen external_inheritor
+      run: go run ./cmd/cogs gen external_inheritor advanced.cog.toml --out=${{ matrix.out }}
     - name: gen flat_json
       run: go run ./cmd/cogs gen flat_json advanced.cog.toml --out=${{ matrix.out }}
     - name: gen complex_json

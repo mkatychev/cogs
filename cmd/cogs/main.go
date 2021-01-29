@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const cogsVersion = "0.6.2"
+const cogsVersion = "0.6.3"
 const usage string = `
 COGS COnfiguration manaGement S
 
@@ -102,8 +102,11 @@ func main() {
 			// convert all key values to uppercase
 			output, err = godotenv.Marshal(modKeys(cfgMap, modFuncs...))
 		case cogs.Raw:
-			// it's important for raw to preserve the order of keys specified
-			output, err = getRawValue(cfgMap, strings.Split(conf.Keys, ","), conf.Delimiter)
+			keyList := []string{}
+			if conf.Keys != "" {
+				keyList = strings.Split(conf.Keys, ",")
+			}
+			output, err = getRawValue(cfgMap, keyList, conf.Delimiter)
 		}
 		ifErr(err)
 

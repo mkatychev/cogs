@@ -28,13 +28,19 @@ func getRawValue(cfgMap map[string]interface{}, keyList []string, delimiter stri
 	case "\\t":
 		delimiter = "\t"
 	}
-	// it's important for raw to preserve the order of keys specified
-	for _, v := range keyList {
-		keyName, ok := cfgMap[v]
-		if !ok {
-			return "", fmt.Errorf("getRawValue: key %s is missing from cfgMap")
+	if len(keyList) != 0 {
+		for _, v := range keyList {
+			keyName, ok := cfgMap[v]
+			if !ok {
+				return "", fmt.Errorf("getRawValue: key %s is missing from cfgMap", v)
+			}
+			values = append(values, fmt.Sprintf("%s", keyName))
 		}
-		values = append(values, fmt.Sprintf("%s", keyName))
+	} else {
+		// iterate without an order reference if keyList is empty
+		for _, v := range cfgMap {
+			values = append(values, fmt.Sprintf("%s", v))
+		}
 	}
 	return strings.Join(values, delimiter), nil
 

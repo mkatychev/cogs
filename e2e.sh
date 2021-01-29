@@ -7,4 +7,5 @@ go run ./cmd/cogs gen inheritor advanced.cog.toml
 go run ./cmd/cogs gen flat_json advanced.cog.toml
 go run ./cmd/cogs gen complex_json advanced.cog.toml
 go run ./cmd/cogs gen inheritor advanced.cog.toml
+go run ./cmd/cogs gen external_inheritor advanced.cog.toml
 go run ./cmd/cogs gen envsubst envsubst.cog.toml -e
