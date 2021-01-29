@@ -28,8 +28,6 @@ var3 = {path = [[], "base.json_string"], type ="json"}
 
 # external_inheritor resolves to the EXACT same values as the inheritor context above
 # the base object is simply in an external file
-# use the shell command below to view the JSON key without escape backslashes:
-# echo $(jq -r .base.json ./test_files/external_base.json)
 [external_inheritor]
 path = ["test_files/external_inheritor.json", "base"]
 # since base.json is not a flat string to string map
