@@ -1,0 +1,11 @@
+{
+  "base": {
+    "var1": "var1_value",
+    "var2": "var2_value",
+    "json": {
+      "var3": "var3_value",
+      "some_var": "some_value"
+    }
+  }
+}
+
