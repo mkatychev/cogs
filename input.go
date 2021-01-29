@@ -201,7 +201,7 @@ func (vi *visitor) SetValue(cfg *Cfg) (err error) {
 	case rWhole, rJSONComplex:
 		return vi.visitComplex(cfg)
 	case rGear:
-		return vi.visitComplex(cfg)
+		panic("unsupported read type")
 	}
 
 	// 1. check if cfg.SubPath value has been used in a previous SetValue call
