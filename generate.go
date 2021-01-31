@@ -14,6 +14,9 @@ var NoEnc bool = false
 // EnvSubst decides whether to use environmental substitution or not
 var EnvSubst bool = false
 
+// RecursionLimit is the limit used to define when to abort successive traversals of gears
+var RecursionLimit int = 12
+
 // Cfg holds all the data needed to generate one string key value pair
 type Cfg struct {
 	Name         string      // defaults to key name in cog file unless var.name="other_name" is used
