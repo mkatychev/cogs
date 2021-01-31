@@ -25,6 +25,7 @@ type Cfg struct {
 	Path         string      // filepath string where Cfg can be resolved
 	SubPath      string      // object traversal string used to resolve Cfg if not at top level of document (yq syntax)
 	encrypted    bool        // indicates if decryption is needed to resolve Cfg.Value
+	remote       bool        // indicates if an HTTP request is needed to return the given document
 	readType     readType
 }
 
@@ -96,6 +97,13 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 			if _, ok := pathGroups[cfg.Path]; !ok {
 				// read plaintext file into bytes
 				loadFileFunc := readFile
+				// check the path string is a valid URL
+				if cfg.remote = isValidUrl(cfg.Path); cfg.remote {
+					loadFileFunc = getHTTPFile
+				}
+				if cfg.encrypted && cfg.remote {
+					panic("remote encrypted files not supported at this time")
+				}
 				// read encrypted file into bytes
 				if cfg.encrypted {
 					loadFileFunc = decryptFile
@@ -162,7 +170,7 @@ func (g *Gear) getCfgFilePath(cfgPath string) string {
 	if cfgPath == selfPath {
 		return g.filePath
 	}
-	if path.IsAbs(cfgPath) {
+	if path.IsAbs(cfgPath) || isValidUrl(cfgPath) {
 		return cfgPath
 	}
 	dir, err := os.Getwd()
