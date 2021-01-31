@@ -151,29 +151,30 @@ DATABASE_SECRETS: "secret_pw"
 [envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html) cheatsheet:
 
 
-| __Expression__                  | __Meaning__    |
-| -----------------               | -------------- |
-| `${var}`                        | Value of var (same as `$var`)
-| `${var-${DEFAULT}}`             | If var not set, evaluate expression as `${DEFAULT}`
-| `${var:-${DEFAULT}}`            | If var not set or is empty, evaluate expression as `${DEFAULT}`
-| `${var=${DEFAULT}}`             | If var not set, evaluate expression as `${DEFAULT}`
-| `${var:=${DEFAULT}}`            | If var not set or is empty, evaluate expression as `${DEFAULT}`
-| `$$var`                         | Escape expressions. Result will be `$var`.
-| `${var^^}`                      | Uppercase value of `$var`
-| `${var,,}`                      | Lowercase value of `$var`
-| `${#var}`                       | Value of `$var` string length
-| `${var^}`                       |
-| `${var,}`                       |
-| `${var:position}`               |
-| `${var:position:length}`        |
-| `${var#substring}`              |
-| `${var##substring}`             |
-| `${var%substring}`              |
-| `${var%%substring}`             |
-| `${var/substring/replacement}`  |
-| `${var//substring/replacement}` |
-| `${var/#substring/replacement}` |
-| `${var/%substring/replacement}` |
+| __Expression__                | __Meaning__                                                     |
+| -----------------             | --------------                                                  |
+| `${var}`                      | Value of var
+| `${var-${DEFAULT}}`           | If `$var` not set, evaluate expression as `${DEFAULT}`
+| `${var:-${DEFAULT}}`          | If `$var` not set or is empty, evaluate expression as `${DEFAULT}`
+| `${var=${DEFAULT}}`           | If `$var` not set, evaluate expression as `${DEFAULT}`
+| `${var:=${DEFAULT}}`          | If `$var` not set or is empty, evaluate expression as `${DEFAULT}`
+| `$$var`                       | Escape expressions. Result will be the string `$var`
+| `${var^}`                     | Uppercase first character of `$var`
+| `${var^^}`                    | Uppercase all characters in `$var`
+| `${var,}`                     | Lowercase first character of `$var`
+| `${var,,}`                    | Lowercase all characters in `$var`
+| `${#var}`                     | String length of `$var`
+| `${var:n}`                    | Offset `$var` `n` characters from the left
+| `${var: -n}`                  | Offset `$var` `n` characters from the right
+| `${var:n:len}`                | Offset `$var` `n` characters of `len` length
+| `${var#pattern}`              | Strip shortest `pattern` match from start
+| `${var##pattern}`             | Strip longest `pattern` match from start
+| `${var%pattern}`              | Strip shortest `pattern` match from end
+| `${var%%pattern}`             | Strip longest `pattern` match from end
+| `${var/pattern/replacement}`  | Replace as few `pattern` matches as possible with `replacement`
+| `${var//pattern/replacement}` | Replace as many `pattern` matches as possible with `replacement`
+| `${var/#pattern/replacement}` | Replace `pattern` match with `replacement` from `$var` start
+| `${var/%pattern/replacement}` | Replace `pattern` match with `replacement` from `$var` end
 
 
 Notes:

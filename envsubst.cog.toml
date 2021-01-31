@@ -10,8 +10,23 @@ lstrip_nongreedy = "${HOME##/}"
 lstrip_wildcard_greedy = "${HOME#/*/}"
 lstrip_wildcard_nongreedy = "${HOME##/*/}"
 # % and %% work from the right end.
-rstrip_greedy = "${HOME}"
+rstrip_greedy = "${HOME%/}"
 rstrip_nongreedy = "${HOME%%/}"
 rstrip_wildcard_greedy = "${HOME%/*/}"
 rstrip_wildcard_nongreedy = "${HOME%%/*/}"
 length = "${#HOME}"
+# use NVIM="nvim" go run ./cmd/cogs gen envsubst envsubst.cog.toml -e
+# for example below
+# ================
+# Pattern matching
+# * Matches any string
+# ? Matches any single character.
+# […] Matches any one of the enclosed characters.
+# - A pair of characters separated by a hyphen denotes a range expression;
+# any character that falls between those two characters, inclusive, using the current locale’s collating sequence and character set, is matched.
+# - If the first character following the ‘[’ is a ‘!’ or a ‘^’ then any character not enclosed is matched.
+# ================
+vim = "${NVIM#?}"
+vim_e = "${NVIM#[n]}"
+vim_e_neg = "${NVIM#[^vim]}"
+uppercase = "${NVIM^^}"
