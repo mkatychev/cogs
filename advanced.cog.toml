@@ -24,16 +24,16 @@ json_string = '''
 # "." - a single period is a reserved filepath string
 # it is used to self-reference the cog file
 # this helps avoid breaking generation when the cog file is moved or renamed
-path = [".", "base"]
+path = [".", ".base"]
 [inheritor.vars]
 var1.path = []
 var2.path = []
-var3 = {path = [[], "base.json_string"], type ="json"}
+var3 = {path = [[], ".base.json_string"], type ="json"}
 
 # `external_inheritor` resolves to the EXACT same values as the inheritor context above
 # the base object is simply found in an external file
 [external_inheritor]
-path = ["test_files/external_inheritor.json", "base"]
+path = ["test_files/external_inheritor.json", ".base"]
 # since base.json is not a flat string to string map
 # type must be set to JSONcomplex akak "json{}" instead of the inherited json type
 type = "json{}"
@@ -41,20 +41,20 @@ type = "json{}"
 var1.path = []
 var2.path = []
 # TODO handle json_string as a JSON string inside of JSON proper
-var3.path = [[], "base.json"]
+var3.path = [[], ".base.json"]
 
 # this example mainly deals with how one handles JSON data embedded in another format
 # or as a proper JSON file
 [flat_json]
-path = ["./test_files/json_map.json", "flat_map"]
+path = ["./test_files/json_map.json", ".flat_map"]
 [flat_json.vars]
 var1.path = []
 var2.path = []
 var3.path = []
-var4.path = [[], "complex_map.nested"]
+var4.path = [[], ".complex_map.nested"]
 
 [complex_json]
-path = ["./test_files/json_map.json", "flat_map"]
+path = ["./test_files/json_map.json", ".flat_map"]
 [complex_json.vars]
 array_json = {path="./test_files/array.json", type="whole"}
 # returns file in entirety as value for k/v pair
@@ -65,6 +65,6 @@ complex_map = {path = [[],""], type = "json{}"}
 # returns just the array element without an overlying associative array
 # specifying subpath "complex_map.array" along with the read type of whole
 # allows the traversed element to be returned without casting
-array = {path = [[],"complex_map.array"], type = "whole"}
+array = {path = [[],".complex_map.array"], type = "whole"}
 # retrieves a complex object from a string held in a yaml file
-complex_var = {path = ["./test_files/kustomization.yaml", "complexJsonMap"], type = "json{}"}
+complex_var = {path = ["./test_files/kustomization.yaml", ".complexJsonMap"], type = "json{}"}

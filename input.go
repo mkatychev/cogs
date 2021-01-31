@@ -8,7 +8,7 @@ import (
 
 	"github.com/drone/envsubst"
 	"github.com/joho/godotenv"
-	"github.com/mikefarah/yq/v3/pkg/yqlib"
+	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"github.com/pelletier/go-toml"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -184,7 +184,7 @@ func newVisitor(node *yaml.Node) Visitor {
 		rootNode:       node,
 		visited:        make(map[string]map[string]string),
 		visitedComplex: make(map[string]interface{}),
-		parser:         yqlib.NewYqLib(),
+		evaluator:      yqlib.NewAllAtOnceEvaluator(),
 	}
 }
 
@@ -192,7 +192,7 @@ type visitor struct {
 	rootNode       *yaml.Node
 	visited        map[string]map[string]string
 	visitedComplex map[string]interface{}
-	parser         yqlib.YqLib
+	evaluator      yqlib.Evaluator
 }
 
 // SetValue assigns the Value for a given Cfg using the existing Cfg.Path and Cfg.SubPath
@@ -219,7 +219,7 @@ func (vi *visitor) SetValue(cfg *Cfg) (err error) {
 	}
 
 	supportedKind := func() bool {
-		for _, kind := range []yaml.Kind{yaml.MappingNode, yaml.ScalarNode, yaml.SequenceNode} {
+		for _, kind := range []yaml.Kind{yaml.MappingNode, yaml.ScalarNode, yaml.SequenceNode, yaml.DocumentNode} {
 			if node.Kind == kind {
 				return true
 			}
@@ -301,15 +301,20 @@ func (vi *visitor) visitComplex(cfg *Cfg) (err error) {
 }
 
 func (vi *visitor) get(subPath string) (*yaml.Node, error) {
-	nodeCtx, err := vi.parser.Get(vi.rootNode, subPath)
+	list, err := vi.evaluator.EvaluateNodes(subPath, vi.rootNode)
 	if err != nil {
 		return nil, err
 	}
+	nodes := []*yqlib.CandidateNode{}
+	for el := list.Front(); el != nil; el = el.Next() {
+		n := el.Value.(*yqlib.CandidateNode)
+		nodes = append(nodes, n)
+	}
 	// should only match a single node
-	if len(nodeCtx) != 1 {
+	if len(nodes) != 1 {
 		return nil, fmt.Errorf("returned non singular result for path '%s'", subPath)
 	}
-	return nodeCtx[0].Node, nil
+	return nodes[0].Node, nil
 }
 
 func visitDotenv(cache *map[string]string, node *yaml.Node) (err error) {

@@ -7,7 +7,7 @@ other_var = "other_var_value"
 
 [sops]
 # a default path to be inherited can be defined under <ctx>.path
-path = ["./test_files/manifest.yaml", "subpath"]
+path = ["./test_files/manifest.yaml", ".subpath"]
 [sops.vars]
 # a <var>.path key can map to four valid types:
 # 1. path value is "string_value" - indicating a single file to look through
@@ -16,9 +16,9 @@ path = ["./test_files/manifest.yaml", "subpath"]
 # -  [[], "subpath"] - path will be inherited from <ctx>.path if present
 # -  ["path", []] - subpath will be inherited from <ctx>.path if present
 # 4. ["path", "subpath"] - nothing will be inherited
-var1.path = ["./test_files/manifest.yaml", "subpath"]
+var1.path = ["./test_files/manifest.yaml", ".subpath"]
 var2.path = []
-var3.path = [[], "other_subpath"]
+var3.path = [[], ".other_subpath"]
 # dangling variable should return {"empty_var": ""} since only name override was defined
 empty_var.name = "some_name"
 # key value pairs for an encrypted context are defined under <ctx>.enc.vars
@@ -28,7 +28,7 @@ dotenv_enc = {path = "./test_files/test.enc.env", name = "DOTENV_ENC"}
 json_enc.path = "./test_files/test.enc.json"
 
 [kustomize]
-path = ["./test_files/kustomization.yaml", "configMapGenerator.[0].literals"]
+path = ["./test_files/kustomization.yaml", ".configMapGenerator.[0].literals"]
 # a default deserialization path to be inherited can be defined under <ctx>.path
 # once <var>.path has been traversed, attempt to deserialize the returned object
 # as if it was in dotenv format
@@ -38,4 +38,4 @@ type = "dotenv"
 # be searched for to retrieve the var1 value
 var1 = {path = [], name = "VAR_1"}
 var2 = {path = [], name = "VAR_2"}
-var3 = {path = [[], "jsonMap"], type = "json"}
+var3 = {path = [[], ".jsonMap"], type = "json"}

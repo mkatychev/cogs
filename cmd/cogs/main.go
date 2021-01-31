@@ -61,7 +61,8 @@ func main() {
 
 	err = opts.Bind(&conf)
 	ifErr(err)
-	logging.SetLevel(logging.WARNING, "yq")
+	// this is the logger used by yq, set it to warning to hide trace and debug data
+	logging.SetLevel(logging.WARNING, "")
 	cogs.NoEnc = conf.NoEnc
 	cogs.EnvSubst = conf.EnvSubst
 
