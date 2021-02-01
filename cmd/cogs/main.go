@@ -73,17 +73,13 @@ func main() {
 
 		format, err := conf.validate()
 		ifErr(err)
-
-		cfgMap, err := cogs.Generate(conf.Ctx, conf.File, format)
-		ifErr(err)
-
-		cfgMap, err = conf.filterCfgMap(cfgMap)
+		cfgMap, err := cogs.Generate(conf.Ctx, conf.File, format, conf.filterCfgMap)
 		ifErr(err)
 
 		switch format {
 		case cogs.JSON:
 			b, err = json.MarshalIndent(cfgMap, "", "  ")
-			output = string(b)
+			output = string(b) + "\n"
 		case cogs.YAML:
 			b, err = yaml.Marshal(cfgMap)
 			output = string(b)
@@ -111,6 +107,6 @@ func main() {
 		}
 		ifErr(err)
 
-		fmt.Fprintln(os.Stdout, output)
+		fmt.Fprint(os.Stdout, output)
 	}
 }

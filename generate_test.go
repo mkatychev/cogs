@@ -19,7 +19,7 @@ type generateTestOut struct {
 	name   string
 	env    string
 	toml   string
-	config map[string]interface{}
+	config CfgMap
 	err    error
 }
 
@@ -64,7 +64,7 @@ func TestGenerate(t *testing.T) {
 			env:    "local",
 			toml:   errCogToml,
 			config: nil,
-			err:    errors.New("local: var: duplicate key present in env and env.enc"),
+			err:    errors.New("local: var: duplicate key present in ctx and ctx.enc"),
 		},
 		{
 			name:   "InvalidPathArray/Error",
@@ -133,8 +133,8 @@ enc_var.path = ["./path.enc", ".subpath"]
 )
 
 type testGear struct {
-	Name   string
-	cfgMap configMap
+	Name    string
+	linkMap LinkMap
 }
 
 // SetName sets the gear name to the provided string
@@ -143,29 +143,29 @@ func (g *testGear) SetName(name string) {
 }
 
 // ResolveMap is used to satisfy the Generator interface
-func (g *testGear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
+func (g *testGear) ResolveMap(env CfgMap) (CfgMap, error) {
 	var err error
 
-	g.cfgMap, err = parseEnv(env)
+	g.linkMap, err = parseEnv(env)
 	if err != nil {
 		return nil, err
 	}
 
 	// final output
-	cfgOut := make(map[string]interface{})
+	linkOut := make(map[string]interface{})
 
-	for k, cfg := range g.cfgMap {
-		cfgOut[k] = g.ResolveValue(cfg)
+	for k, link := range g.linkMap {
+		linkOut[k] = g.ResolveValue(link)
 	}
-	return cfgOut, nil
+	return linkOut, nil
 
 }
 
-// ResolveValue returns the value corresponding to a Cfg struct
+// ResolveValue returns the value corresponding to a Link struct
 // if Path resolves to a valid file the file byte value
 // is passed to a file reader object, attempting to serialize the contents of
 // the file if type is supported
-func (g *testGear) ResolveValue(c *Cfg) string {
+func (g *testGear) ResolveValue(c *Link) string {
 	// if Path is empty or Value is non empty
 	if c.Path == "" || c.Value != "" {
 		return c.Value

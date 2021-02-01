@@ -2,6 +2,7 @@ package cogs
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -22,13 +23,25 @@ func isValidUrl(path string) bool {
 	return true
 }
 
-func getHTTPFile(urlPath string) ([]byte, error) {
+func getHTTPFile(urlPath string, header http.Header) ([]byte, error) {
 	var buf bytes.Buffer
 
-	response, err := http.Get(urlPath) //use package "net/http"
+	request, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
+		return nil, err
+	}
+	for key, values := range header {
+		for _, value := range values {
+			request.Header.Add(key, value)
+		}
 	}
 
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, err
+	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("Returned status code of %d", response.StatusCode)
+	}
 	defer response.Body.Close()
 
 	// Copy data from the response to standard output

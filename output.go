@@ -31,22 +31,22 @@ func (t Format) Validate() error {
 	}
 }
 
-// OutputCfg returns the corresponding value for a given Cfg struct
-func OutputCfg(cfg *Cfg, format Format) (interface{}, error) {
-	if cfg.Value != "" && cfg.ComplexValue != nil {
-		return nil, fmt.Errorf("Cfg.Name[%s]: Cfg.Value and Cfg.ComplexValue are both non-empty", cfg.Name)
+// OutputCfg returns the corresponding value for a given Link struct
+func OutputCfg(link *Link, format Format) (interface{}, error) {
+	if link.Value != "" && link.ComplexValue != nil {
+		return nil, fmt.Errorf("Link.Name[%s]: Link.Value and Link.ComplexValue are both non-empty", link.Name)
 	}
-	if cfg.ComplexValue == nil {
-		return cfg.Value, nil
+	if link.ComplexValue == nil {
+		return link.Value, nil
 	}
 	if format == Dotenv || format == Raw {
-		strValue, err := marshalComplexValue(cfg.ComplexValue, FormatForCfg(cfg))
+		strValue, err := marshalComplexValue(link.ComplexValue, FormatForLink(link))
 		if err != nil {
 			return nil, err
 		}
 		return strValue, nil
 	}
-	return cfg.ComplexValue, nil
+	return link.ComplexValue, nil
 }
 
 func marshalComplexValue(v interface{}, format Format) (output string, err error) {
@@ -103,16 +103,39 @@ func FormatForPath(path string) Format {
 	return format
 }
 
-// FormatForCfg returns the correct format given the readType
-func FormatForCfg(cfg *Cfg) (format Format) {
-	switch cfg.readType {
+// FormatForLink returns the correct format given the readType
+func FormatForLink(link *Link) (format Format) {
+	switch link.readType {
 	case rJSON, rJSONComplex:
 		format = JSON
 	case rDotenv:
 		format = Dotenv
 	// grab Format from filepath suffix if there are no explicit type overrides
 	default:
-		format = FormatForPath(cfg.Path)
+		format = FormatForPath(link.Path)
 	}
 	return format
+}
+
+// Exclude produces a laundered map with exclusionList values missing
+func Exclude(exclusionList []string, cfgMap CfgMap) CfgMap {
+	newCfgMap := make(map[string]interface{})
+
+	for k := range cfgMap {
+		if InList(k, exclusionList) {
+			continue
+		}
+		newCfgMap[k] = cfgMap[k]
+	}
+	return newCfgMap
+}
+
+// InList verifies that a given string is in a string slice
+func InList(s string, ss []string) bool {
+	for _, v := range ss {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }

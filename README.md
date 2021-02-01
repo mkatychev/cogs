@@ -94,8 +94,8 @@ var3 = {path = [[], ".jsonMap"], type = "json"}
 ## further references
 
 [TOML spec](https://toml.io/en/v1.0.0-rc.3#keyvalue-pair)
-
 [envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html) cheatsheet:
+[yq expressions](https://mikefarah.gitbook.io/yq/)
 
 
 | __Expression__                | __Meaning__                                                     |
@@ -113,7 +113,7 @@ var3 = {path = [[], ".jsonMap"], type = "json"}
 | `${#var}`                     | String length of `$var`
 | `${var:n}`                    | Offset `$var` `n` characters from start
 | `${var: -n}`                  | Offset `$var` `n` characters from end
-| `${var:n:len}`                | Offset `$var` `n` characters of `len` length
+| `${var:n:len}`                | Offset `$var` `n` characters with max length of `len`
 | `${var#pattern}`              | Strip shortest `pattern` match from start
 | `${var##pattern}`             | Strip longest `pattern` match from start
 | `${var%pattern}`              | Strip shortest `pattern` match from end

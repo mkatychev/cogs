@@ -2,6 +2,7 @@ package cogs
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 
@@ -17,21 +18,23 @@ var EnvSubst bool = false
 // RecursionLimit is the limit used to define when to abort successive traversals of gears
 var RecursionLimit int = 12
 
-// Cfg holds all the data needed to generate one string key value pair
-type Cfg struct {
+// Link holds all the data needed to resolve one string key value pair
+type Link struct {
 	Name         string      // defaults to key name in cog file unless var.name="other_name" is used
-	Value        string      // Cfg.ComplexValue should be nil if Cfg.Value is a non-empty string("")
-	ComplexValue interface{} // Cfg.Value should be empty string("") if Cfg.ComplexValue is non-nil
-	Path         string      // filepath string where Cfg can be resolved
-	SubPath      string      // object traversal string used to resolve Cfg if not at top level of document (yq syntax)
-	encrypted    bool        // indicates if decryption is needed to resolve Cfg.Value
+	Value        string      // Link.ComplexValue should be nil if Link.Value is a non-empty string("")
+	ComplexValue interface{} // Link.Value should be empty string("") if Link.ComplexValue is non-nil
+	Path         string      // filepath string where Link can be resolved
+	SubPath      string      // object traversal string used to resolve Link if not at top level of document (yq syntax)
+	encrypted    bool        // indicates if decryption is needed to resolve Link.Value
 	remote       bool        // indicates if an HTTP request is needed to return the given document
+	header       http.Header // HTTP request headers
+	keys         []string    // key filter for Gear read types
 	readType     readType
 }
 
-// String holds the string representation of a Cfg struct
-func (c Cfg) String() string {
-	return fmt.Sprintf(`Cfg{
+// String holds the string representation of a Link struct
+func (c Link) String() string {
+	return fmt.Sprintf(`Link{
 	Name: %s
 	Value: %s
 	Path: %s
@@ -40,13 +43,19 @@ func (c Cfg) String() string {
 }`, c.Name, c.Value, c.Path, c.SubPath, c.encrypted)
 }
 
-// configMap is used by Resolver to output the final k/v associative array
-type configMap map[string]*Cfg
+// LinkMap is used by Resolver to output the final k/v associative array
+type LinkMap map[string]*Link
+
+// CfgMap is meant to represent a map with values of one or more unknown types
+type CfgMap map[string]interface{}
+
+// EnvFilter if a function meant to filter a CfgMap
+type EnvFilter func(CfgMap) (CfgMap, error)
 
 // Resolver is meant to define an object that returns the final string map to be used in a configuration
 // resolving any paths and sub paths defined in the underling config map
 type Resolver interface {
-	ResolveMap(RawEnv) (map[string]interface{}, error)
+	ResolveMap(CfgMap) (CfgMap, error)
 	SetName(string)
 }
 
@@ -57,10 +66,13 @@ type Resolver interface {
 // of how one Cog manifest file can have many contexts/environments
 type Gear struct {
 	Name       string
-	cfgMap     configMap
-	filePath   string // filepath of file.cog.toml
-	fileValue  []byte // byte representation of TOML file
-	outputType Format // desired output type of the marshalled Gear
+	linkMap    LinkMap
+	filePath   string     // filepath of file.cog.toml
+	fileValue  []byte     // byte representation of TOML file
+	tree       *toml.Tree // TOML object tree
+	outputType Format     // desired output type of the marshalled Gear
+	recursions uint       // the amount of recursions for the current Gear
+	filter     EnvFilter
 }
 
 // SetName sets the gear name to the provided string
@@ -69,66 +81,75 @@ func (g *Gear) SetName(name string) {
 }
 
 // ResolveMap outputs the flat associative string, resolving potential filepath pointers
-// held by Cfg objects by calling the .ResolveValue() method
-func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
+// held by Link objects by calling the .ResolveValue() method
+func (g *Gear) ResolveMap(env CfgMap) (CfgMap, error) {
 	var err error
 
-	g.cfgMap, err = parseEnv(env)
+	if g.filter != nil {
+		if env, err = g.filter(env); err != nil {
+			return nil, err
+		}
+	}
+
+	g.linkMap, err = parseEnv(env)
 	if err != nil {
 		return nil, err
 	}
 
-	// includes Cfg objects with a direct file and an empty SubPath:
+	// includes Link objects with a direct file and an empty SubPath:
 	// ex: var.path = "./path"
 	// ---
-	// as well as Cfg objects with SubPaths present:
+	// as well as Link objects with SubPaths present:
 	// ex: var.path = ["./path", ".subpath"]
 	// ---
 
 	type PathGroup struct {
 		loadFile func(filePath string) ([]byte, error)
-		cfgs     []*Cfg
+		links    []*Link
 	}
 	pathGroups := make(map[string]*PathGroup)
 
-	// 1. sort Cfgs by Path
-	for _, cfg := range g.cfgMap {
-		if cfg.Path != "" {
-			if _, ok := pathGroups[cfg.Path]; !ok {
+	// 1. sort Links by Path
+	for _, link := range g.linkMap {
+		if link.Path != "" {
+			if _, ok := pathGroups[link.Path]; !ok {
 				// read plaintext file into bytes
 				loadFileFunc := readFile
 				// check the path string is a valid URL
-				if cfg.remote = isValidUrl(cfg.Path); cfg.remote {
-					loadFileFunc = getHTTPFile
+				if link.remote = isValidUrl(link.Path); link.remote {
+					// cheat to fulfill PathGroup interface
+					loadFileFunc = func(path string) ([]byte, error) {
+						return getHTTPFile(path, link.header)
+					}
 				}
-				if cfg.encrypted && cfg.remote {
+				if link.encrypted && link.remote {
 					panic("remote encrypted files not supported at this time")
 				}
 				// read encrypted file into bytes
-				if cfg.encrypted {
+				if link.encrypted {
 					loadFileFunc = decryptFile
 				}
-				pathGroups[cfg.Path] = &PathGroup{loadFile: loadFileFunc, cfgs: []*Cfg{}}
+				pathGroups[link.Path] = &PathGroup{loadFile: loadFileFunc, links: []*Link{}}
 			}
-			pathGroups[cfg.Path].cfgs = append(pathGroups[cfg.Path].cfgs, cfg)
+			pathGroups[link.Path].links = append(pathGroups[link.Path].links, link)
 		}
 	}
 
 	for p, pGroup := range pathGroups {
 		var fileBuf []byte
 		// 2. for each distinct Path: generate a Reader object
-		cfgFilePath := g.getCfgFilePath(p)
-		// if cfg.Path references the cog file, return the already read (and envsubst applied) value
+		linkFilePath := g.getLinkFilePath(p)
+		// if link.Path references the cog file, return the already read (and envsubst applied) value
 		if p == selfPath {
 			fileBuf = g.fileValue
-		} else if fileBuf, err = pGroup.loadFile(cfgFilePath); err != nil {
+		} else if fileBuf, err = pGroup.loadFile(linkFilePath); err != nil {
 			return nil, err
 		}
 
 		newVisitor := NewYAMLVisitor
 		// 3. create visitor to handle SubPath strings
 		// all read files should resolve to a yaml.Node, this includes JSON, TOML, and dotenv
-		switch FormatForPath(cfgFilePath) {
+		switch FormatForPath(linkFilePath) {
 		case JSON:
 			newVisitor = NewJSONVisitor
 		case YAML:
@@ -143,20 +164,20 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 			return nil, err
 		}
 
-		// 4. traverse every Path and possible SubPath retrieving the Cfg.Values associated with it
-		for _, cfg := range pGroup.cfgs {
-			err := visitor.SetValue(cfg)
+		// 4. traverse every Path and possible SubPath retrieving the Link.Values associated with it
+		for _, link := range pGroup.links {
+			err := visitor.SetValue(link)
 			if err != nil {
-				return nil, fmt.Errorf("%s: %w", cfg.Name, err)
+				return nil, fmt.Errorf("%s: %w", link.Name, err)
 			}
 
 		}
 	}
 
 	// final output
-	cfgOut := make(map[string]interface{})
-	for cogName, cfg := range g.cfgMap {
-		cfgOut[cogName], err = OutputCfg(cfg, g.outputType)
+	cfgOut := make(CfgMap)
+	for cogName, link := range g.linkMap {
+		cfgOut[cogName], err = OutputCfg(link, g.outputType)
 		if err != nil {
 			return nil, err
 		}
@@ -166,25 +187,22 @@ func (g *Gear) ResolveMap(env RawEnv) (map[string]interface{}, error) {
 
 }
 
-func (g *Gear) getCfgFilePath(cfgPath string) string {
-	if cfgPath == selfPath {
+func (g *Gear) getLinkFilePath(linkPath string) string {
+	if linkPath == selfPath {
 		return g.filePath
 	}
-	if path.IsAbs(cfgPath) || isValidUrl(cfgPath) {
-		return cfgPath
+	if path.IsAbs(linkPath) || isValidUrl(linkPath) {
+		return linkPath
 	}
 	dir, err := os.Getwd()
 	if err != nil {
 		dir = path.Dir(g.filePath)
 	}
-	return path.Join(dir, cfgPath)
+	return path.Join(dir, linkPath)
 }
 
-// RawEnv is meant to represent the topmost untraversed level of a cog environment
-type RawEnv map[string]interface{}
-
 // Generate is a top level command that takes an env argument and cogfilepath to return a string map
-func Generate(envName, cogPath string, outputType Format) (map[string]interface{}, error) {
+func Generate(ctxName, cogPath string, outputType Format, filter EnvFilter) (CfgMap, error) {
 	var tree *toml.Tree
 	var err error
 
@@ -205,15 +223,23 @@ func Generate(envName, cogPath string, outputType Format) (map[string]interface{
 	if tree, err = toml.LoadBytes(b); err != nil {
 		return nil, err
 	}
-	return generate(envName, tree, &Gear{filePath: cogPath, fileValue: b, outputType: outputType})
+	gear := &Gear{
+		filePath:   cogPath,
+		fileValue:  b,
+		tree:       tree,
+		outputType: outputType,
+		recursions: 0,
+		filter:     filter,
+	}
+	return generate(ctxName, tree, gear)
 
 }
 
-func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]interface{}, error) {
+func generate(ctxName string, tree *toml.Tree, gear Resolver) (CfgMap, error) {
 	var err error
 
 	type rawManifest struct {
-		table map[string]RawEnv
+		table map[string]CfgMap
 	}
 
 	// grab manifest name
@@ -232,45 +258,45 @@ func generate(envName string, tree *toml.Tree, gear Resolver) (map[string]interf
 		return nil, err
 	}
 
-	env, ok := manifest.table[envName]
+	env, ok := manifest.table[ctxName]
 	if !ok {
-		return nil, fmt.Errorf("%s context missing from cog file", envName)
+		return nil, fmt.Errorf("%s context missing from cog file", ctxName)
 	}
 
 	genOut, err := gear.ResolveMap(env)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", envName, err)
+		return nil, fmt.Errorf("%s: %w", ctxName, err)
 	}
 
 	return genOut, nil
 }
 
 // parseEnv traverses an map interface to populate a gear's configMap
-func parseEnv(env RawEnv) (cfgMap configMap, err error) {
-	cfgMap = make(configMap)
+func parseEnv(env CfgMap) (linkMap LinkMap, err error) {
+	linkMap = make(map[string]*Link)
 
 	// skip fetching encrypted vars if flag is toggled
 	if !NoEnc {
-		err = decodeEncrypted(cfgMap, env)
+		err = decodeEncrypted(linkMap, env)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	err = decodeEnv(cfgMap, env)
+	err = decodeEnv(linkMap, env)
 	if err != nil {
 		return nil, err
 	}
-	return cfgMap, nil
+	return linkMap, nil
 }
 
-func decodeEnv(cfgMap configMap, env RawEnv) error {
+func decodeEnv(linkMap LinkMap, env CfgMap) error {
 	var err error
-	var baseCfg Cfg
+	var baseLink Link
 
 	// global path
 	if pathValue, ok := env["path"]; ok {
-		if err = decodePath(pathValue, &baseCfg, nil); err != nil {
+		if err = decodePath(pathValue, &baseLink, nil); err != nil {
 			return err
 		}
 	}
@@ -281,8 +307,8 @@ func decodeEnv(cfgMap configMap, env RawEnv) error {
 		if !ok {
 			return fmt.Errorf("env.type must be a string value")
 		}
-		baseCfg.readType = readType(strValue)
-		if err := baseCfg.readType.Validate(); err != nil {
+		baseLink.readType = readType(strValue)
+		if err := baseLink.readType.Validate(); err != nil {
 			return err
 		}
 	}
@@ -296,31 +322,31 @@ func decodeEnv(cfgMap configMap, env RawEnv) error {
 		return fmt.Errorf(".vars must map to a table")
 	}
 
-	// check for duplicate keys for env.vars and env.enc.vars
-	for varName, rawVar := range vars {
-		if _, ok := cfgMap[varName]; ok {
-			return fmt.Errorf("%s: duplicate key present in env and env.enc", varName)
+	// check for duplicate keys for ctx.vars and ctx.enc.vars
+	for varName, rawCfg := range vars {
+		if _, ok := linkMap[varName]; ok {
+			return fmt.Errorf("%s: duplicate key present in ctx and ctx.enc", varName)
 		}
-		switch cfgType := rawVar.(type) {
+		switch cfgMap := rawCfg.(type) {
 		case string:
-			cfgMap[varName] = &Cfg{
+			linkMap[varName] = &Link{
 				Name:  varName,
-				Value: cfgType,
+				Value: cfgMap,
 			}
 		case map[string]interface{}:
-			cfgMap[varName], err = parseCfgMap(varName, &baseCfg, cfgType)
+			linkMap[varName], err = parseLinkMap(varName, &baseLink, cfgMap)
 			if err != nil {
 				return fmt.Errorf("%s: %w", varName, err)
 			}
 		default:
-			return fmt.Errorf("%s: %s is an unsupported type", varName, cfgType)
+			return fmt.Errorf("%s: %s is an unsupported type", varName, cfgMap)
 		}
 	}
 	return nil
 }
 
 // convenience function for passing env.enc variables to decodeEnv
-func decodeEncrypted(cfgMap configMap, env RawEnv) error {
+func decodeEncrypted(linkMap LinkMap, env CfgMap) error {
 	// treat enc key as a nested configMap
 	enc, ok := env["enc"]
 	if !ok {
@@ -332,88 +358,124 @@ func decodeEncrypted(cfgMap configMap, env RawEnv) error {
 	}
 
 	// parse through encrypted variables first
-	err := decodeEnv(cfgMap, rawEnc)
+	err := decodeEnv(linkMap, rawEnc)
 	if err != nil {
 		return err
 	}
-	// since env.enc is always called first, mark all output Cfgs as encrypted
-	for key, cfg := range cfgMap {
-		cfg.encrypted = true
-		cfgMap[key] = cfg
+	// since env.enc is always called first, mark all output Links as encrypted
+	for key, link := range linkMap {
+		link.encrypted = true
+		linkMap[key] = link
 	}
 
 	return nil
 }
 
-// parseCfg handles the cases when a config value maps to a non string object type
-func parseCfgMap(varName string, baseCfg *Cfg, cfgVal map[string]interface{}) (*Cfg, error) {
-	var cfg Cfg
+// parseLink handles the cases when a config value maps to a non string object type
+func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) {
+	var link Link
 	var ok bool
 
-	for k, v := range cfgVal {
+	for k, v := range cfgMap {
 		switch k {
 		case "name":
-			cfg.Name, ok = v.(string)
-			if !ok {
-				return nil, fmt.Errorf(".name must be a string")
+			if link.Name, ok = v.(string); !ok {
+				return nil, fmt.Errorf("%s.name must be a string", varName)
 			}
 		case "path":
-			if err := decodePath(v, &cfg, baseCfg); err != nil {
+			if err := decodePath(v, &link, baseLink); err != nil {
 				return nil, fmt.Errorf("%s.path: %w", varName, err)
 			}
 		case "type":
 			rType, ok := v.(string)
 			if !ok {
-				return nil, fmt.Errorf(".type must be a string")
+				return nil, fmt.Errorf("%s.type must be a string", varName)
 			}
 
-			cfg.readType = readType(rType)
-			if err := cfg.readType.Validate(); err != nil {
-				return nil, err
+			link.readType = readType(rType)
+			if err := link.readType.Validate(); err != nil {
+				return nil, fmt.Errorf("%s.type: %w", varName, err)
 			}
+		case "gear_keys":
+			panic("rGear unsupported at this time")
+			keysErr := fmt.Errorf("%s.keys must be a string or array of strings", varName)
+			link.keys = []string{}
+			slice, ok := v.([]interface{})
+			if !ok {
+				return nil, keysErr
+			}
+			for _, v := range slice {
+				str, ok := v.(string)
+				if !ok {
+					return nil, keysErr
+				}
+				link.keys = append(link.keys, str)
 
+			}
+		case "header": // "net/http".Header is of type Header map[string][]string
+			link.header = make(http.Header)
+			headerErr := fmt.Errorf("%s.header must map to a string or array of strings", varName)
+			header, ok := v.(map[string]interface{}) // handle single string value header
+			if !ok {
+				return nil, headerErr
+			}
+			for headerK, headerV := range header {
+				switch vType := headerV.(type) {
+				case string:
+					link.header[headerK] = append(link.header[headerK], vType)
+				case []interface{}: // go is unable to check for headerV.([]string)
+					for _, el := range vType {
+						vStr, ok := el.(string)
+						if !ok {
+							return nil, headerErr
+						}
+						link.header[headerK] = append(link.header[headerK], vStr)
+
+					}
+				}
+			}
 		default:
-			return nil, fmt.Errorf("%s is an unsupported key name", k)
+			return nil, fmt.Errorf("%s.%s is an unsupported key name", varName, k)
 		}
 
 	}
 	// if readType was not specified:
-	if _, ok := cfgVal["type"]; !ok {
-		if baseCfg != nil {
-			cfg.readType = baseCfg.readType
+	if _, ok := cfgMap["type"]; !ok {
+		if baseLink != nil {
+			link.readType = baseLink.readType
 		} else {
-			cfg.readType = deferred
+			link.readType = deferred
 		}
 	}
 	// if name is not defined: `var = "value"`
-	// then set cfg.Name to the key name, "var" in this case
-	if _, ok := cfgVal["name"]; !ok {
-		cfg.Name = varName
+	// then set link.Name to the key name, "var" in this case
+	if _, ok := cfgMap["name"]; !ok {
+		link.Name = varName
 	}
 
-	return &cfg, nil
+	return &link, nil
 }
 
-// decodePath decodes a value of v into a given Cfg pointer
+// decodePath decodes a value of v into a given Link pointer
 // a path key can map to four valid types:
 // 1. path value is a single string mapping to filepath
-// 2. path value  is an empty slice, thus baseCfg values will be inherited
+// 2. path value  is an empty slice, thus baseLink values will be inherited
 // 3. path value  is a two index slice with either index possibly holding an empty slice or string value:
-// -  [[], subpath] - path will be inherited from baseCfg if present
-// -  [path, []] - subpath will be inherited from baseCfg if present
+// -  [[], subpath] - path will be inherited from baseLink if present
+// -  [path, []] - subpath will be inherited from baseLink if present
 // 4. [path, subpath] - nothing will be inherited as both indices hold strings
-func decodePath(v interface{}, cfg *Cfg, baseCfg *Cfg) error {
+func decodePath(v interface{}, link *Link, baseLink *Link) error {
 	var ok bool
-	var baseCfgSlice []string
-	// map path indices to respective Cfg struct
-	if baseCfg != nil {
-		baseCfgSlice = []string{baseCfg.Path, baseCfg.SubPath}
+	var baseLinkSlice []string
+	// map path indices to respective Link struct
+	if baseLink != nil {
+		baseLinkSlice = []string{baseLink.Path, baseLink.SubPath}
 	} else {
-		baseCfgSlice = []string{"", ""}
+		baseLinkSlice = []string{"", ""}
 	}
 
 	// singular filepath string
-	cfg.Path, ok = v.(string)
+	link.Path, ok = v.(string)
 	if ok {
 		return nil
 	}
@@ -423,9 +485,9 @@ func decodePath(v interface{}, cfg *Cfg, baseCfg *Cfg) error {
 		return fmt.Errorf("path must be a string, array of strings/empty arrays, or an empty array")
 	}
 	// if path maps to an empty slice: var.path = []
-	if len(pathSlice) == 0 && baseCfg != nil {
-		cfg.Path = baseCfg.Path
-		cfg.SubPath = baseCfg.SubPath
+	if len(pathSlice) == 0 && baseLink != nil {
+		link.Path = baseLink.Path
+		link.SubPath = baseLink.SubPath
 		return nil
 	}
 	if len(pathSlice) != 2 {
@@ -448,10 +510,10 @@ func decodePath(v interface{}, cfg *Cfg, baseCfg *Cfg) error {
 			return fmt.Errorf("array in path[%d] must be empty", i)
 		}
 		// inherit the respective path attribute or assign empty string
-		decodedSlice[i] = baseCfgSlice[i]
+		decodedSlice[i] = baseLinkSlice[i]
 
 	}
-	cfg.Path = decodedSlice[0]
-	cfg.SubPath = decodedSlice[1]
+	link.Path = decodedSlice[0]
+	link.SubPath = decodedSlice[1]
 	return nil
 }

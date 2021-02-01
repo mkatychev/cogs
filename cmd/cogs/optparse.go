@@ -59,37 +59,15 @@ func modKeys(cfgMap map[string]interface{}, modFn ...func(string) string) map[st
 	return newCfgMap
 }
 
-// exclude produces a laundered map with exclusionList values missing
-func exclude(exclusionList []string, cfgMap map[string]interface{}) map[string]interface{} {
-	newCfgMap := make(map[string]interface{})
-
-	for k := range cfgMap {
-		if inList(k, exclusionList) {
-			continue
-		}
-		newCfgMap[k] = cfgMap[k]
-	}
-	return newCfgMap
-}
-
-func inList(s string, ss []string) bool {
-	for _, v := range ss {
-		if v == s {
-			return true
-		}
-	}
-	return false
-}
-
 // filterCfgMap retains only key names passed to --keys
-func (c *Conf) filterCfgMap(cfgMap map[string]interface{}) (map[string]interface{}, error) {
+func (c *Conf) filterCfgMap(cfgMap cogs.CfgMap) (cogs.CfgMap, error) {
 
 	// --not runs before --keys!
 	// make sure to avoid --not=key_name --key=key_name, ya dingus!
 	var notList []string
 	if c.Not != "" {
 		notList = strings.Split(c.Not, ",")
-		cfgMap = exclude(notList, cfgMap)
+		cfgMap = cogs.Exclude(notList, cfgMap)
 	}
 	if c.Keys == "" {
 		return cfgMap, nil
@@ -101,7 +79,7 @@ func (c *Conf) filterCfgMap(cfgMap map[string]interface{}) (map[string]interface
 		var ok bool
 		if newCfgMap[key], ok = cfgMap[key]; !ok {
 			hint := ""
-			if inList(key, notList) {
+			if cogs.InList(key, notList) {
 				hint = fmt.Sprintf("\n\n--not=%s and --keys=%s were called\n"+
 					"avoid trying to include and exclude the same value, ya dingus!", key, key)
 			}

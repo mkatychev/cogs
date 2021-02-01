@@ -39,7 +39,7 @@ func (t readType) Validate() error {
 	case rDotenv, rJSON, rJSONComplex, rWhole:
 		return nil
 	default: // deferred readType should not be validated
-		return fmt.Errorf("%s is an invalid cfgType", string(t))
+		return fmt.Errorf("%s is an invalid linkType", string(t))
 	}
 }
 
@@ -121,7 +121,7 @@ var kindStr = map[yaml.Kind]string{
 
 // Visitor allows a query path to return the underlying value for a given visitor
 type Visitor interface {
-	SetValue(*Cfg) error
+	SetValue(*Link) error
 }
 
 // NewJSONVisitor returns a visitor object that satisfies the Visitor interface
@@ -195,25 +195,25 @@ type visitor struct {
 	evaluator      yqlib.Evaluator
 }
 
-// SetValue assigns the Value for a given Cfg using the existing Cfg.Path and Cfg.SubPath
-func (vi *visitor) SetValue(cfg *Cfg) (err error) {
-	switch cfg.readType {
+// SetValue assigns the Value for a given Link using the existing Link.Path and Link.SubPath
+func (vi *visitor) SetValue(link *Link) (err error) {
+	switch link.readType {
 	case rWhole, rJSONComplex:
-		return vi.visitComplex(cfg)
+		return vi.visitComplex(link)
 	case rGear:
-		panic("unsupported read type")
+		panic("rGear unsupported at this time")
 	}
 
-	// 1. check if cfg.SubPath value has been used in a previous SetValue call
-	if flatMap, ok := vi.visited[cfg.SubPath]; ok {
-		if cfg.Value, ok = flatMap[cfg.Name]; !ok {
-			return fmt.Errorf("unable to find %s", cfg.Name)
+	// 1. check if link.SubPath value has been used in a previous SetValue call
+	if flatMap, ok := vi.visited[link.SubPath]; ok {
+		if link.Value, ok = flatMap[link.Name]; !ok {
+			return fmt.Errorf("unable to find %s", link.Name)
 		}
 		return nil
 	}
 
 	// 2. grab the yaml node corresponding to the subpath
-	node, err := vi.get(cfg.SubPath)
+	node, err := vi.get(link.SubPath)
 	if err != nil {
 		return err
 	}
@@ -229,13 +229,13 @@ func (vi *visitor) SetValue(cfg *Cfg) (err error) {
 
 	if !supportedKind {
 		return fmt.Errorf("%s: NodeKind/readType unsupported: %s/%s",
-			cfg.Name, kindStr[node.Kind], cfg.readType)
+			link.Name, kindStr[node.Kind], link.readType)
 	}
 
 	cachedMap := make(map[string]string)
 
 	// 3. traverse node based on read type
-	switch cfg.readType {
+	switch link.readType {
 	case rDotenv:
 		err = visitDotenv(&cachedMap, node)
 	case rJSON:
@@ -243,26 +243,26 @@ func (vi *visitor) SetValue(cfg *Cfg) (err error) {
 	case deferred:
 		err = node.Decode(cachedMap)
 	default:
-		err = fmt.Errorf("unsupported readType: %s", cfg.readType)
+		err = fmt.Errorf("unsupported readType: %s", link.readType)
 	}
 	if err != nil {
 		return errors.Wrap(err, "SetValue")
 	}
 
 	// 4. add value to cache
-	vi.visited[cfg.SubPath] = cachedMap
+	vi.visited[link.SubPath] = cachedMap
 
 	// 5. recurse to access cache
-	return vi.SetValue(cfg)
+	return vi.SetValue(link)
 
 }
 
 // visitComplex handles the rWhole and rJSONComplex read types
-func (vi *visitor) visitComplex(cfg *Cfg) (err error) {
-	// 1. check if cfg.SubPath and readType has been used before
-	if v, ok := vi.visitedComplex[cfg.SubPath]; ok {
-		if cfg.readType == rWhole {
-			cfg.ComplexValue = v
+func (vi *visitor) visitComplex(link *Link) (err error) {
+	// 1. check if link.SubPath and readType has been used before
+	if v, ok := vi.visitedComplex[link.SubPath]; ok {
+		if link.readType == rWhole {
+			link.ComplexValue = v
 
 			return nil
 		}
@@ -270,34 +270,36 @@ func (vi *visitor) visitComplex(cfg *Cfg) (err error) {
 		if !ok {
 			return fmt.Errorf("path does not resolve to a map: %T", v)
 		}
-		if cfg.ComplexValue, ok = complexMap[cfg.Name]; !ok {
-			return fmt.Errorf("unable to find %s", cfg.Name)
+		if link.ComplexValue, ok = complexMap[link.Name]; !ok {
+			return fmt.Errorf("unable to find %s", link.Name)
 		}
 		return nil
 	}
 	// 2. grab the yaml node corresponding to the subpath
-	node, err := vi.get(cfg.SubPath)
+	node, err := vi.get(link.SubPath)
 	if err != nil {
 		return err
 	}
 	// 3. traverse node based on read type
 	var i interface{}
-	switch cfg.readType {
+	switch link.readType {
 	case rWhole:
 		err = node.Decode(&i)
 	case rJSONComplex:
 		i = make(map[string]interface{})
 		err = visitJSONComplex(i.(map[string]interface{}), node)
+	case rGear:
+		panic("rGear unsupported at this time")
 	default:
-		err = fmt.Errorf("unsupported readType: %s", cfg.readType)
+		err = fmt.Errorf("unsupported readType: %s", link.readType)
 	}
 	if err != nil {
 		return errors.Wrap(err, "visitComplex")
 	}
 	// 4. add value to cache
-	vi.visitedComplex[cfg.SubPath] = i
+	vi.visitedComplex[link.SubPath] = i
 	// 5. recurse to access cache
-	return vi.visitComplex(cfg)
+	return vi.visitComplex(link)
 }
 
 func (vi *visitor) get(subPath string) (*yaml.Node, error) {
