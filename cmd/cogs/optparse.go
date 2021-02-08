@@ -19,7 +19,7 @@ func ifErr(err error) {
 	}
 }
 
-func getRawValue(cfgMap map[string]interface{}, keyList []string, delimiter string) (string, error) {
+func getRawValue(cfgMap cogs.CfgMap, keyList []string, delimiter string) (string, error) {
 	var values []string
 	// Interpret --sep='\n' and --sep='\t' as newlines and tabs
 	switch delimiter {
@@ -48,7 +48,7 @@ func getRawValue(cfgMap map[string]interface{}, keyList []string, delimiter stri
 
 // modKeys should always return a flat associative array of strings
 // coercing any interface{} value into a string
-func modKeys(cfgMap map[string]interface{}, modFn ...func(string) string) map[string]string {
+func modKeys(cfgMap cogs.CfgMap, modFn ...func(string) string) map[string]string {
 	newCfgMap := make(map[string]string)
 	for k, v := range cfgMap {
 		for _, fn := range modFn {
@@ -59,25 +59,28 @@ func modKeys(cfgMap map[string]interface{}, modFn ...func(string) string) map[st
 	return newCfgMap
 }
 
-// filterCfgMap retains only key names passed to --keys
-func (c *Conf) filterCfgMap(cfgMap cogs.CfgMap) (cogs.CfgMap, error) {
+// filterLinks retains only key names passed to --keys
+func (c *Conf) filterLinks(linkMap cogs.LinkMap) (cogs.LinkMap, error) {
+	if linkMap == nil {
+		return nil, nil
+	}
 
 	// --not runs before --keys!
 	// make sure to avoid --not=key_name --key=key_name, ya dingus!
 	var notList []string
 	if c.Not != "" {
 		notList = strings.Split(c.Not, ",")
-		cfgMap = cogs.Exclude(notList, cfgMap)
+		linkMap = cogs.Exclude(notList, linkMap)
 	}
 	if c.Keys == "" {
-		return cfgMap, nil
+		return linkMap, nil
 	}
 
 	keyList := strings.Split(c.Keys, ",")
-	newCfgMap := make(map[string]interface{})
+	newCfgMap := make(cogs.LinkMap)
 	for _, key := range keyList {
 		var ok bool
-		if newCfgMap[key], ok = cfgMap[key]; !ok {
+		if newCfgMap[key], ok = linkMap[key]; !ok {
 			hint := ""
 			if cogs.InList(key, notList) {
 				hint = fmt.Sprintf("\n\n--not=%s and --keys=%s were called\n"+

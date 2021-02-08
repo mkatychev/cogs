@@ -8,8 +8,8 @@ import (
 	"net/url"
 )
 
-// isValidUrl tests a string to determine if it is a well-structured url or not.
-func isValidUrl(path string) bool {
+// isValidURL tests a string to determine if it is a well-structured url or not.
+func isValidURL(path string) bool {
 	_, err := url.ParseRequestURI(path)
 	if err != nil {
 		return false

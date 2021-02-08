@@ -6,7 +6,7 @@ With `go`:
 
 Without `go`, `PL`atform can be Linux/Windows/Darwin:
 ```sh
-PL="Darwin" VR="0.7.0" \
+PL="Darwin" VR="0.7.1" \
   curl -SLk \ 
   "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs

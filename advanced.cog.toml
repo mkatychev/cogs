@@ -2,7 +2,7 @@ name = "advanced_example"
 
 # `base` is a standalone TOML object aka table that is not part of the context aka <ctx> logic
 # ==========================================================
-# A COGS CONTEXT IS DEFINED BY THE PRESENCE OF THE KEY `var`
+# A COGS CONTEXT IS DEFINED BY THE PRESENCE OF THE KEY `vars`
 # otherwise the TOML table is treated normally
 # ==========================================================
 # `base` could just as well exist in another file, say JSON in this example, and resolve to the same values
@@ -16,6 +16,7 @@ json_string = '''
   "some_var": "some_value"
 }
 '''
+var4 = ["var", "4", "value"]
 
 # inheritor pattern
 # this allows explicit inheritance from `base` variables without adding more
@@ -29,6 +30,7 @@ path = [".", ".base"]
 var1.path = []
 var2.path = []
 var3 = {path = [[], ".base.json_string"], type ="json"}
+var4 = {path = [], type ="toml{}"}
 
 # `external_inheritor` resolves to the EXACT same values as the inheritor context above
 # the base object is simply found in an external file
@@ -36,12 +38,14 @@ var3 = {path = [[], ".base.json_string"], type ="json"}
 path = ["test_files/external_inheritor.json", ".base"]
 # since base.json is not a flat string to string map
 # type must be set to JSONcomplex akak "json{}" instead of the inherited json type
-type = "json{}"
+type = "json"
 [external_inheritor.vars]
 var1.path = []
 var2.path = []
-# TODO handle json_string as a JSON string inside of JSON proper
-var3.path = [[], ".base.json"]
+var3.path = [[], ".base.json_string"]
+# read type must be explicit since we are dealing with a JSON string inside of a JSON object
+var3.type = "json" 
+var4 = {path = [], type = "json{}"}
 
 # this example mainly deals with how one handles JSON data embedded in another format
 # or as a proper JSON file

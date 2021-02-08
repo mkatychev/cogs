@@ -14,8 +14,8 @@ path = ["./test_files/manifest.yaml", ".subpath"]
 # 2. path value is [] - thus <ctx>.path will be inherited
 # 3. path value is a ["two_index, "array"] - either index being [] or "string_value":
 # -  [[], "subpath"] - path will be inherited from <ctx>.path if present
-# -  ["path", []] - subpath will be inherited from <ctx>.path if present
-# 4. ["path", "subpath"] - nothing will be inherited
+# -  ["filepath", []] - subpath will be inherited from <ctx>.path if present
+# 4. ["filepath", "subpath"] - nothing will be inherited
 var1.path = ["./test_files/manifest.yaml", ".subpath"]
 var2.path = []
 var3.path = [[], ".other_subpath"]
