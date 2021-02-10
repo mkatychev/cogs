@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const cogsVersion = "0.7.1"
+const cogsVersion = "0.7.2"
 const usage string = `
 COGS COnfiguration manaGement S
 

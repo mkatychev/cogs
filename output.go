@@ -3,6 +3,7 @@ package cogs
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/pelletier/go-toml"
@@ -36,20 +37,16 @@ func OutputCfg(link *Link, outputType Format) (interface{}, error) {
 	if outputType == Dotenv || outputType == Raw {
 		// don't try to marshal simple primitive types
 		if IsSimpleValue(link.Value) {
-			return link.Value, nil
+			return SimpleValueToString(link.Value)
 		}
-		strValue, err := marshalComplexValue(link.Value, FormatForLink(link))
-		if err != nil {
-			return nil, err
-		}
-		return strValue, nil
+		return marshalComplexValue(link.Value, FormatLinkInput(link))
 	}
 	return link.Value, nil
 }
 
-func marshalComplexValue(v interface{}, format Format) (output string, err error) {
+func marshalComplexValue(v interface{}, inputType Format) (output string, err error) {
 	var b []byte
-	switch format {
+	switch inputType {
 	case JSON:
 		b, err = json.Marshal(v)
 		output = string(b)
@@ -81,8 +78,8 @@ func FormatForPath(path string) Format {
 	return format
 }
 
-// FormatForLink returns the correct format given the readType
-func FormatForLink(link *Link) (format Format) {
+// FormatLinkInput returns the correct format given the readType
+func FormatLinkInput(link *Link) (format Format) {
 	switch link.readType {
 	case rJSON, rJSONComplex:
 		format = JSON
@@ -126,6 +123,45 @@ func IsSimpleValue(i interface{}) bool {
 		return true
 	}
 	return false
+}
+
+// TODO  ErrNotASimpleValue = errorW{fmt:"%s of type %T is not a simple value"}
+
+// SimpleValueToString converts an undelying type to a string, returning an error if it is not a simple value
+func SimpleValueToString(i interface{}) (str string, err error) {
+	switch t := i.(type) {
+	case string:
+		str = t
+	case int:
+		str = strconv.Itoa(t)
+	case int8:
+		str = strconv.FormatInt(int64(t), 10)
+	case int16:
+		str = strconv.FormatInt(int64(t), 10)
+	case int32:
+		str = strconv.FormatInt(int64(t), 10)
+	case int64:
+		str = strconv.FormatInt(int64(t), 10)
+	case uint:
+		str = strconv.FormatUint(uint64(t), 10)
+	case uint8:
+		str = strconv.FormatUint(uint64(t), 10)
+	case uint16:
+		str = strconv.FormatUint(uint64(t), 10)
+	case uint32:
+		str = strconv.FormatUint(uint64(t), 10)
+	case uint64:
+		str = strconv.FormatUint(uint64(t), 10)
+	case bool:
+		str = strconv.FormatBool(t)
+	case float32:
+		str = strconv.FormatFloat(float64(t), 'E', -1, 64)
+	case float64:
+		str = strconv.FormatFloat(t, 'E', -1, 32)
+	default:
+		err = fmt.Errorf("%s of type %T is not a simple value", t, t)
+	}
+	return str, err
 }
 
 // Exclude produces a laundered map with exclusionList values missing

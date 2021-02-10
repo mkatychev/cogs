@@ -5,6 +5,10 @@ name = "basic_example"
 var = "var_value"
 other_var = "other_var_value"
 
+# dangling variable names should return an error
+# try uncommenting the line below and run `cogs gen docker basic.cog.toml`
+# empty_var.name = "some_name"
+
 [sops]
 # a default path to be inherited can be defined under <ctx>.path
 path = ["./test_files/manifest.yaml", ".subpath"]
@@ -19,8 +23,8 @@ path = ["./test_files/manifest.yaml", ".subpath"]
 var1.path = ["./test_files/manifest.yaml", ".subpath"]
 var2.path = []
 var3.path = [[], ".other_subpath"]
-# dangling variable should return {"empty_var": ""} since only name override was defined
-empty_var.name = "some_name"
+
+
 # key value pairs for an encrypted context are defined under <ctx>.enc.vars
 [sops.enc.vars]
 yaml_enc.path = "./test_files/test.enc.yaml"

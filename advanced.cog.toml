@@ -36,16 +36,18 @@ var4 = {path = [], type ="toml{}"}
 # the base object is simply found in an external file
 [external_inheritor]
 path = ["test_files/external_inheritor.json", ".base"]
-# since base.json is not a flat string to string map
-# type must be set to JSONcomplex akak "json{}" instead of the inherited json type
-type = "json"
 [external_inheritor.vars]
 var1.path = []
 var2.path = []
+
+# read type must be explicit since we are dealing with a JSON string *inside* of a JSON object
+var3.type = "json"
 var3.path = [[], ".base.json_string"]
-# read type must be explicit since we are dealing with a JSON string inside of a JSON object
-var3.type = "json" 
-var4 = {path = [], type = "json{}"}
+
+# since `var4` does not map to a flat string
+# type must be set to JSONcomplex aka "json{}" instead of the inherited json type
+var4.type = "json{}"
+var4.path = []
 
 # this example mainly deals with how one handles JSON data embedded in another format
 # or as a proper JSON file
