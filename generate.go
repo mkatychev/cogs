@@ -32,7 +32,7 @@ type Link struct {
 	remote     bool        // indicates if an HTTP request is needed to return the given document
 	header     http.Header // HTTP request headers
 	keys       []string    // key filter for Gear read types
-	readType   readType
+	readType   ReadType
 }
 
 // String holds the string representation of a Link struct
@@ -115,18 +115,17 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 			if _, ok := pathGroups[link.Path]; !ok {
 				// read plaintext file into bytes
 				loadFileFunc := readFile
-				// check the path string is a valid URL
-				if link.remote = isValidURL(link.Path); link.remote {
-					// cheat to fulfill PathGroup interface
+				link.remote = isValidURL(link.Path)
+				switch {
+				case link.encrypted && link.remote:
+					loadFileFunc = func(path string) ([]byte, error) {
+						return decryptHTTPFile(path, link.header)
+					}
+				case link.remote:
 					loadFileFunc = func(path string) ([]byte, error) {
 						return getHTTPFile(path, link.header)
 					}
-				}
-				if link.encrypted && link.remote {
-					panic("remote encrypted files not supported at this time")
-				}
-				// read encrypted file into bytes
-				if link.encrypted {
+				case link.encrypted:
 					loadFileFunc = decryptFile
 				}
 				pathGroups[link.Path] = &PathGroup{loadFile: loadFileFunc, links: []*Link{}}
@@ -337,7 +336,7 @@ func decodeVars(linkMap LinkMap, ctx context) error {
 	// global search name
 	baseLink.SearchName = ctx.Name
 	// global type
-	baseLink.readType = readType(ctx.ReadType)
+	baseLink.readType = ReadType(ctx.ReadType)
 	if err := baseLink.readType.Validate(); err != nil {
 		return err
 	}
@@ -398,7 +397,7 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 				return nil, fmt.Errorf("%s.type must be a string", varName)
 			}
 
-			link.readType = readType(rType)
+			link.readType = ReadType(rType)
 			if err := link.readType.Validate(); err != nil {
 				return nil, fmt.Errorf("%s.type: %w", varName, err)
 			}

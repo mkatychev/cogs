@@ -20,87 +20,6 @@ import (
 // this helps avoid breaking generation when the cog file is moved or renamed
 const selfPath string = "."
 
-type readType string
-
-const (
-	// read format overrides
-	rDotenv readType = "dotenv"
-	rJSON   readType = "json"
-	rYAML   readType = "yaml"
-	rTOML   readType = "toml"
-	// complex values of a given markup type are appended with "{}"
-	rJSONComplex readType = "json{}" // complex JSON key value pair: {"k":{"v1":[],"v2":[]}}
-	rYAMLComplex readType = "yaml{}" // complex YAML key value pair: {k: {v1: [], v2: []}}
-	rTOMLComplex readType = "toml{}" // complex TOML key value pair: k = {v1 = [], v2 = []}
-	// read format derived from filepath suffix
-	deferred readType = ""      // defer file config type to filename suffix
-	rWhole   readType = "whole" // indicates to associate the entirety of a file to the given key name
-	rGear    readType = "gear"  // treat TOML table as a nested gear object
-)
-
-// Validate ensures that a string is a valid readType enum
-func (t readType) Validate() error {
-	switch t {
-	case rDotenv, rJSON, rYAML, rTOML,
-		rJSONComplex, rYAMLComplex, rTOMLComplex, rWhole,
-		deferred:
-		return nil
-	default: // deferred readType should not be validated
-		return fmt.Errorf("%s is an invalid linkType", t.String())
-	}
-}
-
-// isComplex returns true if the readType is complex
-func (t readType) isComplex() bool {
-	switch t {
-	case rJSONComplex, rYAMLComplex, rTOMLComplex, rWhole:
-		return true
-	}
-	return false
-}
-
-type unmarshalFn func([]byte, interface{}) error
-
-// GetUnmarshal returns the corresponding function to unmarshal a given read type
-func (t readType) GetUnmarshal() (unmarshalFn, error) {
-	switch t {
-	case rJSON, rJSONComplex:
-		return json.Unmarshal, nil
-	case rTOML, rTOMLComplex:
-		return toml.Unmarshal, nil
-	case rYAML, rYAMLComplex:
-		return toml.Unmarshal, nil
-	}
-	return nil, fmt.Errorf("Unsupported type for GetUnmarshal: %s", t)
-}
-
-func (t readType) String() string {
-	switch t {
-	case rDotenv:
-		return string(rDotenv)
-	case rJSON:
-		return "flat json"
-	case rYAML:
-		return "flat yaml"
-	case rTOML:
-		return "flat toml"
-	case rJSONComplex:
-		return "complex json"
-	case rYAMLComplex:
-		return "complex yaml"
-	case rTOMLComplex:
-		return "complex toml"
-	case rWhole:
-		return "whole file"
-	case rGear:
-		return "gear object"
-	case deferred:
-		return "deferred"
-	default:
-		return "unknown"
-	}
-}
-
 // readFile takes a filepath and returns the byte value of the data within
 func readFile(filePath string) ([]byte, error) {
 	file, err := os.Open(filePath)
@@ -422,7 +341,7 @@ func visitDotenv(cache map[string]interface{}, node *yaml.Node) (err error) {
 	return err
 }
 
-func visitMap(cache map[string]interface{}, node *yaml.Node, rType readType) error {
+func visitMap(cache map[string]interface{}, node *yaml.Node, rType ReadType) error {
 	if err := node.Decode(&cache); err == nil {
 		return nil
 	}
@@ -443,7 +362,7 @@ func visitMap(cache map[string]interface{}, node *yaml.Node, rType readType) err
 	return unmarshal([]byte(strEnv), &cache)
 }
 
-func visitComplex(cache map[string]interface{}, node *yaml.Node, rType readType) error {
+func visitComplex(cache map[string]interface{}, node *yaml.Node, rType ReadType) error {
 	if err := node.Decode(&cache); err == nil {
 		return nil
 	}
