@@ -25,7 +25,7 @@ Options:
   -h --help        Show this screen.
   --version        Show version.
   --no-enc, -n     Skips fetching encrypted vars.
-  --no-decrypt	   Skipts decrypting encrypted vars.
+  --no-decrypt	   Skips decrypting encrypted vars.
   --envsubst, -e   Perform environmental substitution on the given cog file.
   --keys=<key,>    Include specific keys, comma separated.
   --not=<key,>     Exclude specific keys, comma separated.
@@ -37,7 +37,7 @@ Options:
   --sep=<sep>      If --out=raw:    Delimits values with a <sep>arator.
  `
 
-// Conf is used to bind CLI agruments and options
+// Conf is used to bind CLI arguments and options
 type Conf struct {
 	Gen       bool
 	Ctx       string

@@ -217,7 +217,7 @@ func (g *Gear) getLinkFilePath(linkPath string) string {
 	return path.Join(dir, linkPath)
 }
 
-// Generate is a top level command that takes an context name argument and cogfilepath to return a string map
+// Generate is a top level command that takes an context name argument and cog file path to return a string map
 func Generate(ctxName, cogPath string, outputType Format, filter LinkFilter) (CfgMap, error) {
 	var tree *toml.Tree
 	var err error

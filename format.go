@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ReadType represents the logic used to dereive the deserliazied value for a given Link
+// ReadType represents the logic used to derive the deserliazied value for a given Link
 type ReadType string
 
 const (
@@ -180,7 +180,7 @@ func IsSimpleValue(i interface{}) bool {
 
 // TODO  ErrNotASimpleValue = errorW{fmt:"%s of type %T is not a simple value"}
 
-// SimpleValueToString converts an undelying type to a string, returning an error if it is not a simple value
+// SimpleValueToString converts an underlying type to a string, returning an error if it is not a simple value
 func SimpleValueToString(i interface{}) (str string, err error) {
 	switch t := i.(type) {
 	case string:

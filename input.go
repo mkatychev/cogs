@@ -49,7 +49,7 @@ func readFile(filePath string) ([]byte, error) {
 func envSubBytes(bytes []byte) ([]byte, error) {
 	// ------------------------------------------------------------------------
 	// strip comments so we dont do comment substitution by tokenizing the file
-	// and reemiting the file as bytes  ¯\_(ツ)_/¯
+	// and reemitting the file as bytes  ¯\_(ツ)_/¯
 	tree, err := toml.LoadBytes(bytes)
 	if err != nil {
 		return nil, err

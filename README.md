@@ -66,20 +66,20 @@ look_for_manifest_var.name = "manifest_var"
 # empty_var.name = "some_name"
 ```
 
-## example Data:
+## example data:
 Example data can be used as a tutorial run `cogs gen` on the files in the order below, run the command once then read the file to soo how the underlying logic is used:
 
-1. basic example
-  * `cogs gen basic basic.cog.toml`
-1. secret values example
-  * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
-  * `cogs gen sops secrets.cog.toml.cog.toml`
-1. read types example
-  * `cogs gen kustomize read_types.cog.toml`
-1. advanced patterns example
-  * `cogs gen kustomize read_types.cog.toml`
-1. envsubst patterns example
-  * `NVIM=nvim cogs gen envsubst envsubst.cog.toml --envsubst`
+1. basic example:
+   * `cogs gen basic basic.cog.toml`
+1. secret values and paths example:
+   * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
+   * `cogs gen sops secrets.cog.toml.cog.toml`
+1. read types example:
+   * `cogs gen kustomize read_types.cog.toml`
+1. advanced patterns example:
+   * `cogs gen kustomize read_types.cog.toml`
+1. envsubst patterns example:
+   * `NVIM=nvim cogs gen envsubst envsubst.cog.toml --envsubst`
 
 ## `envsubst` cheatsheet:
 
@@ -129,3 +129,4 @@ thing = "${THING_VAR}"
 [yq expressions](https://mikefarah.gitbook.io/yq/)
 
 [envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html)
+

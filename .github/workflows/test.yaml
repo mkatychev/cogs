@@ -40,7 +40,7 @@ jobs:
     - name: gen sops
       run: go run ./cmd/cogs gen sops secrets.cog.toml --out=${{ matrix.out }}
     - name: gen kustomize
-      run: go run ./cmd/cogs gen kustomize read_types.cog.toml.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen kustomize read_types.cog.toml --out=${{ matrix.out }}
     - name: gen inheritor
       run: go run ./cmd/cogs gen inheritor advanced.cog.toml --out=${{ matrix.out }}
     - name: gen external_inheritor
