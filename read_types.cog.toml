@@ -1,0 +1,19 @@
+name = "read_types example"
+
+# the "kustomize" context shows how defining a <var>.type or read type allows cogs to traverse
+# a manifest that holds data encoded in multiple formats at once
+[kustomize]
+# the <ctx>.path is defined as a file path in index 0, and an object path in index 1:
+# try running the yq v4 command below to see how the path propety is used:
+# `yq eval '.configMapGenerator.[0].literals' ./test_files/kustomization.yaml`
+path = ["./test_files/kustomization.yaml", ".configMapGenerator.[0].literals"]
+# a default deserialization path to be inherited can be defined under <ctx>.path
+# once <var>.path has been traversed, attempt to deserialize the returned object
+# as if it was in dotenv format
+type = "dotenv"
+[kustomize.vars]
+# var1.name = "VAR_1" means that the key alias "VAR_1" will
+# be searched for to retrieve the var1 value
+var1 = {path = [], name = "VAR_1"}
+var2 = {path = [], name = "VAR_2"}
+var3 = {path = [[], ".jsonMap"], type = "json"}

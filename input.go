@@ -80,7 +80,7 @@ var kindStr = map[yaml.Kind]string{
 // Visitor allows a query path to return the underlying value for a given visitor
 type Visitor interface {
 	SetValue(*Link) error
-	Errors() error
+	Errors() []error
 }
 
 // NewJSONVisitor returns a visitor object that satisfies the Visitor interface
@@ -156,16 +156,19 @@ type visitor struct {
 	missing        map[string][]string // denotes links unable to be found
 }
 
-func (vi *visitor) Errors() error {
-	var errMsg string
+func (vi *visitor) Errors() []error {
+	var errs []error
 	for k, v := range vi.missing {
-		errMsg = errMsg + "\n  " + k + ":"
+		errMsg := k + ":"
 		sort.Strings(v)
 		errMsg = errMsg + "\n      " + strings.Join(v, "\n      ")
+		// do not call errors.New because we do not want a
+		// stack trace to be emitted when "%+v" is called on each error
+		errs = append(errs, fmt.Errorf(errMsg))
 	}
 
-	if errMsg != "" {
-		return errors.New(errMsg)
+	if len(errs) > 0 {
+		return errs
 	}
 	return nil
 }
@@ -180,8 +183,8 @@ func (vi *visitor) getLink(link *Link, searchMap map[string]interface{}) (interf
 		subPath = link.SubPath
 	}
 
-	errKey := fmt.Sprintf("[\"%s\", \"%s\"]", link.Path, subPath)
-	errVal := fmt.Sprintf("unable to find key \"%s\"", link.SearchName)
+	errKey := fmt.Sprintf("[%q, %q]", link.Path, subPath)
+	errVal := fmt.Sprintf("unable to find key %q", link.SearchName)
 	if !InList(errVal, vi.missing[errKey]) {
 		vi.missing[errKey] = append(vi.missing[errKey], errVal)
 	}

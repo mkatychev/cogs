@@ -1,4 +1,4 @@
-name = "envsubst_example"
+name = "envsubst example"
 
 # key value pairs for a context are defined under <ctx>.vars
 [envsubst.vars]

@@ -36,11 +36,11 @@ jobs:
     - name: Import GPG Key
       run: gpg --import ./test_files/sops_functional_tests_key.asc
     - name: gen docker
-      run: go run ./cmd/cogs gen docker basic.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen basic basic.cog.toml --out=${{ matrix.out }}
     - name: gen sops
-      run: go run ./cmd/cogs gen sops basic.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen sops secrets.cog.toml --out=${{ matrix.out }}
     - name: gen kustomize
-      run: go run ./cmd/cogs gen kustomize basic.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen kustomize read_types.cog.toml.cog.toml --out=${{ matrix.out }}
     - name: gen inheritor
       run: go run ./cmd/cogs gen inheritor advanced.cog.toml --out=${{ matrix.out }}
     - name: gen external_inheritor

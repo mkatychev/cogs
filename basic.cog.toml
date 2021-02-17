@@ -1,45 +1,23 @@
-name = "basic_example"
+name = "basic example" # every cog manifest should have a name key that corresponds to a string
 
-# key value pairs for a context are defined under <ctx>.vars
-[docker.vars]
+# key value pairs for a context/ctx are defined under <ctx>.vars
+# try running `cogs gen basic basic.cog.toml` to see what output cogs generates
+[basic.vars]
 var = "var_value"
 other_var = "other_var_value"
 
+# if <var>.path is given a string value,
+# cogs will look for the key name of <var> in the file that that corresponds to the <var>.path key,
+# returning the corresponding value
+manifest_var.path = "./test_files/manifest.yaml"
+# try removing manifest_var from "./test_files/manifest.yaml" and see what happens
+
+# some variables can set an explicit key name to look for instead of defaulting to look for
+# the key name "<var>":
+# if <var>.name is defined then cogs will look for a key name that matches <var>.name
+look_for_manifest_var.path = "./test_files/manifest.yaml"
+look_for_manifest_var.name = "manifest_var"
+
 # dangling variable names should return an error
-# try uncommenting the line below and run `cogs gen docker basic.cog.toml`
+# try uncommenting the line below and run `cogs gen basic basic.cog.toml`:
 # empty_var.name = "some_name"
-
-[sops]
-# a default path to be inherited can be defined under <ctx>.path
-path = ["./test_files/manifest.yaml", ".subpath"]
-[sops.vars]
-# a <var>.path key can map to four valid types:
-# 1. path value is "string_value" - indicating a single file to look through
-# 2. path value is [] - thus <ctx>.path will be inherited
-# 3. path value is a ["two_index, "array"] - either index being [] or "string_value":
-# -  [[], "subpath"] - path will be inherited from <ctx>.path if present
-# -  ["filepath", []] - subpath will be inherited from <ctx>.path if present
-# 4. ["filepath", "subpath"] - nothing will be inherited
-var1.path = ["./test_files/manifest.yaml", ".subpath"]
-var2.path = []
-var3.path = [[], ".other_subpath"]
-
-
-# key value pairs for an encrypted context are defined under <ctx>.enc.vars
-[sops.enc.vars]
-yaml_enc.path = "./test_files/test.enc.yaml"
-dotenv_enc = {path = "./test_files/test.enc.env", name = "DOTENV_ENC"}
-json_enc.path = "./test_files/test.enc.json"
-
-[kustomize]
-path = ["./test_files/kustomization.yaml", ".configMapGenerator.[0].literals"]
-# a default deserialization path to be inherited can be defined under <ctx>.path
-# once <var>.path has been traversed, attempt to deserialize the returned object
-# as if it was in dotenv format
-type = "dotenv"
-[kustomize.vars]
-# var1.name = "VAR_1" means that the key alias "VAR_1" will
-# be searched for to retrieve the var1 value
-var1 = {path = [], name = "VAR_1"}
-var2 = {path = [], name = "VAR_2"}
-var3 = {path = [[], ".jsonMap"], type = "json"}

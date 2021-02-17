@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/Bestowinc/cogs"
@@ -11,13 +10,6 @@ import (
 // ----------------------
 // CLI optparse functions
 // ----------------------
-
-func ifErr(err error) {
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
 
 func getRawValue(cfgMap cogs.CfgMap, keyList []string, delimiter string) (string, error) {
 	var values []string

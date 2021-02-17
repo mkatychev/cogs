@@ -1,18 +1,18 @@
 package cogs
 
 import (
-	"fmt"
 	"net/http"
 
 	"go.mozilla.org/sops/v3/decrypt"
 )
 
 func decryptFile(filePath string) ([]byte, error) {
-	sec, err := decrypt.File(filePath, "")
+	encData, err := readFile(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decrypt file %s: %w", filePath, err)
+		return nil, err
 	}
-	return sec, nil
+	format := FormatForPath(filePath)
+	return decrypt.Data(encData, string(format))
 }
 
 func decryptHTTPFile(urlPath string, header http.Header) ([]byte, error) {

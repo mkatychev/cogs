@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const cogsVersion = "0.7.3"
+const cogsVersion = "0.7.4"
 const usage string = `
 COGS COnfiguration manaGement S
 
@@ -25,6 +25,7 @@ Options:
   -h --help        Show this screen.
   --version        Show version.
   --no-enc, -n     Skips fetching encrypted vars.
+  --no-decrypt	   Skipts decrypting encrypted vars.
   --envsubst, -e   Perform environmental substitution on the given cog file.
   --keys=<key,>    Include specific keys, comma separated.
   --not=<key,>     Exclude specific keys, comma separated.
@@ -45,6 +46,7 @@ type Conf struct {
 	Keys      string
 	Not       string
 	NoEnc     bool
+	NoDecrypt bool
 	Raw       bool
 	EnvSubst  bool `docopt:"--envsubst"`
 	Export    bool
@@ -55,16 +57,33 @@ type Conf struct {
 var conf Conf
 
 func main() {
+	err := run()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run handles the main logic in parsing the CLI arguments
+func run() error {
 
 	opts, err := docopt.ParseArgs(usage, os.Args[1:], cogsVersion)
-	ifErr(err)
+	if err != nil {
+		return err
+	}
 
-	err = opts.Bind(&conf)
-	ifErr(err)
+	if err = opts.Bind(&conf); err != nil {
+		return err
+	}
 	// this is the logger used by yq, set it to warning to hide trace and debug data
 	logging.SetLevel(logging.WARNING, "")
 	cogs.NoEnc = conf.NoEnc
 	cogs.EnvSubst = conf.EnvSubst
+	cogs.NoDecrypt = conf.NoDecrypt
+
+	if cogs.NoDecrypt && cogs.NoEnc {
+		return cogs.ErrNoEncAndNoDecrypt
+	}
 
 	switch {
 	case conf.Gen:
@@ -72,9 +91,14 @@ func main() {
 		var output string
 
 		format, err := conf.validate()
-		ifErr(err)
+		if err != nil {
+			return err
+		}
+
 		cfgMap, err := cogs.Generate(conf.Ctx, conf.File, format, conf.filterLinks)
-		ifErr(err)
+		if err != nil {
+			return err
+		}
 
 		switch format {
 		case cogs.JSON:
@@ -87,17 +111,17 @@ func main() {
 			b, err = toml.Marshal(cfgMap)
 			output = string(b)
 		case cogs.Dotenv:
-			var modFuncs []func(string) string
+			var modFn []func(string) string
 			// if --preserve was called, do not convert variable names to uppercase
 			if !conf.Preserve {
-				modFuncs = append(modFuncs, strings.ToUpper)
+				modFn = append(modFn, strings.ToUpper)
 			}
 			// if --export was called, prepend "export " to key name
 			if conf.Export {
-				modFuncs = append(modFuncs, func(k string) string { return "export " + k })
+				modFn = append(modFn, func(k string) string { return "export " + k })
 			}
 			// convert all key values to uppercase
-			output, err = godotenv.Marshal(modKeys(cfgMap, modFuncs...))
+			output, err = godotenv.Marshal(modKeys(cfgMap, modFn...))
 			output = output + "\n"
 		case cogs.Raw:
 			keyList := []string{}
@@ -106,8 +130,12 @@ func main() {
 			}
 			output, err = getRawValue(cfgMap, keyList, conf.Delimiter)
 		}
-		ifErr(err)
+		if err != nil {
+			return err
+		}
 
 		fmt.Fprint(os.Stdout, output)
 	}
+
+	return nil
 }

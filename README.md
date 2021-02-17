@@ -6,7 +6,7 @@ With `go`:
 
 Without `go`, `PL`atform can be Linux/Windows/Darwin:
 ```sh
-PL="Darwin" VR="0.7.3" \
+PL="Darwin" VR="0.7.4" \
   curl -SLk \ 
   "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
@@ -23,6 +23,7 @@ Options:
   -h --help        Show this screen.
   --version        Show version.
   --no-enc, -n     Skips fetching encrypted vars.
+  --no-decrypt	   Skipts decrypting encrypted vars.
   --envsubst, -e   Perform environmental substitution on the given cog file.
   --keys=<key,>    Include specific keys, comma separated.
   --not=<key,>     Exclude specific keys, comma separated.
@@ -40,62 +41,47 @@ Options:
 ## annotated spec:
 
 ```toml
-name = "basic_example"
+name = "basic example" # every cog manifest should have a name key that corresponds to a string
 
-# key value pairs for a context are defined under <ctx>.vars
-[docker.vars]
+# key value pairs for a context/ctx are defined under <ctx>.vars
+# try running `cogs gen basic basic.cog.toml` to see what output cogs generates
+[basic.vars]
 var = "var_value"
 other_var = "other_var_value"
 
-[sops]
-# a default path to be inherited can be defined under <ctx>.path
-path = ["./test_files/manifest.yaml", ".subpath"]
-[sops.vars]
-# a <var>.path key can map to four valid types:
-# 1. path value is "string_value" - indicating a single file to look through
-# 2. path value is [] - thus <ctx>.path will be inherited
-# 3. path value is a ["two_index, "array"] - either index being [] or "string_value":
-# -  [[], "subpath"] - path will be inherited from <ctx>.path if present
-# -  ["path", []] - subpath will be inherited from <ctx>.path if present
-# 4. ["path", "subpath"] - nothing will be inherited
-var1.path = ["./test_files/manifest.yaml", ".subpath"]
-var2.path = []
-var3.path = [[], ".other_subpath"]
-# dangling variable should return {"empty_var": ""} since only name override was defined
-empty_var.name = "some_name"
-# key value pairs for an encrypted context are defined under <ctx>.enc.vars
-[sops.enc.vars]
-yaml_enc.path = "./test_files/test.enc.yaml"
-dotenv_enc = {path = "./test_files/test.enc.env", name = "DOTENV_ENC"}
-json_enc.path = "./test_files/test.enc.json"
+# if <var>.path is given a string value,
+# cogs will look for the key name of <var> in the file that that corresponds to the <var>.path key,
+# returning the corresponding value
+manifest_var.path = "./test_files/manifest.yaml"
+# try removing manifest_var from "./test_files/manifest.yaml" and see what happens
 
-[kustomize]
-path = ["./test_files/kustomization.yaml", ".configMapGenerator.[0].literals"]
-# a default deserialization path to be inherited can be defined under <ctx>.path
-# once <var>.path has been traversed, attempt to deserialize the returned object
-# as if it was in dotenv format
-type = "dotenv"
-[kustomize.vars]
-# var1.name = "VAR_1" means that the key alias "VAR_1" will
-# be searched for to retrieve the var1 value
-var1 = {path = [], name = "VAR_1"}
-var2 = {path = [], name = "VAR_2"}
-var3 = {path = [[], ".jsonMap"], type = "json"}
+# some variables can set an explicit key name to look for instead of defaulting to look for
+# the key name "<var>":
+# if <var>.name is defined then cogs will look for a key name that matches <var>.name
+look_for_manifest_var.path = "./test_files/manifest.yaml"
+look_for_manifest_var.name = "manifest_var"
+
+# dangling variable names should return an error
+# try uncommenting the line below and run `cogs gen basic basic.cog.toml`
+# empty_var.name = "some_name"
 ```
 
-## running example data locally:
-* `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
-* Building binary locally : `go build -o $GOPATH/bin ./cmd/cogs`
-* Kustomize style var retrieval: `cogs gen  kustomize ./basic.cog.toml`
-* Encrypted var retrieval: `cogs gen sops ./basic.cog.toml`
-* `some-service.cog.toml` shows how a toml definition correlates to the JSON counterpart
+## example Data:
+Example data can be used as a tutorial run `cogs gen` on the files in the order below, run the command once then read the file to soo how the underlying logic is used:
 
+1. basic example
+  * `cogs gen basic basic.cog.toml`
+1. secret values example
+  * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
+  * `cogs gen sops secrets.cog.toml.cog.toml`
+1. read types example
+  * `cogs gen kustomize read_types.cog.toml`
+1. advanced patterns example
+  * `cogs gen kustomize read_types.cog.toml`
+1. envsubst patterns example
+  * `NVIM=nvim cogs gen envsubst envsubst.cog.toml --envsubst`
 
-## further references
-
-[TOML spec](https://toml.io/en/v1.0.0-rc.3#keyvalue-pair)
-[envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html) cheatsheet:
-[yq expressions](https://mikefarah.gitbook.io/yq/)
+## `envsubst` cheatsheet:
 
 
 | __Expression__                | __Meaning__                                                     |
@@ -124,8 +110,8 @@ var3 = {path = [[], ".jsonMap"], type = "json"}
 | `${var/%pattern/replacement}` | Replace `pattern` match with `replacement` from `$var` end
 
 
-Notes:
-* `envsubst` warning, make sure that any `--envsubst` tags retain a file's membership as valid TOML:
+## Notes and references:
+### `envsubst` warning - make sure that any `--envsubst` tags retain a file's membership as valid TOML:
 ```toml
 # yes
 [env.vars]
@@ -135,3 +121,11 @@ thing = "${THING_VAR}"
 [sloppy.vars]${NO}
 thing = "${THING_VAR}"
 ```
+
+### Further references
+
+[TOML spec](https://toml.io/en/v1.0.0-rc.3#keyvalue-pair)
+
+[yq expressions](https://mikefarah.gitbook.io/yq/)
+
+[envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html)

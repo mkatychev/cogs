@@ -12,8 +12,11 @@ import (
 	"go.uber.org/multierr"
 )
 
-// NoEnc decides whether to output encrypted variables or now
+// NoEnc decides whether to handle encrypted variables
 var NoEnc bool = false
+
+// NoDecrypt decides whether to decrypt encrypted values, not compatible with NoEnc
+var NoDecrypt bool = false
 
 // EnvSubst decides whether to use environmental substitution or not
 var EnvSubst bool = false
@@ -114,21 +117,21 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 		if link.Path != "" {
 			if _, ok := pathGroups[link.Path]; !ok {
 				// read plaintext file into bytes
-				loadFileFunc := readFile
+				loadFileFn := readFile
 				link.remote = isValidURL(link.Path)
 				switch {
 				case link.encrypted && link.remote:
-					loadFileFunc = func(path string) ([]byte, error) {
+					loadFileFn = func(path string) ([]byte, error) {
 						return decryptHTTPFile(path, link.header)
 					}
 				case link.remote:
-					loadFileFunc = func(path string) ([]byte, error) {
+					loadFileFn = func(path string) ([]byte, error) {
 						return getHTTPFile(path, link.header)
 					}
 				case link.encrypted:
-					loadFileFunc = decryptFile
+					loadFileFn = decryptFile
 				}
-				pathGroups[link.Path] = &PathGroup{loadFile: loadFileFunc, links: []*Link{}}
+				pathGroups[link.Path] = &PathGroup{loadFile: loadFileFn, links: []*Link{}}
 			}
 			pathGroups[link.Path].links = append(pathGroups[link.Path].links, link)
 		}
@@ -143,6 +146,10 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 		if p == selfPath {
 			fileBuf = g.fileValue
 		} else if fileBuf, err = pGroup.loadFile(linkFilePath); err != nil {
+			if os.IsNotExist(err) {
+				errs = multierr.Append(errs, err)
+				continue
+			}
 			return nil, err
 		}
 
@@ -167,18 +174,20 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 		// 4. traverse every Path and possible SubPath retrieving the Link.Values associated with it
 		for _, link := range pGroup.links {
 			if err := visitor.SetValue(link); err != nil {
-				return nil, fmt.Errorf("%s: %w", link.KeyName, err)
+				return nil, errors.Wrap(err, link.KeyName)
 			}
 
 		}
 
 		// 5. add missing links to errs
-		if err := visitor.Errors(); err != nil {
-			errs = multierr.Append(errs, err)
+		if viErrs := visitor.Errors(); viErrs != nil {
+			errs = multierr.Append(errs, multierr.Combine(viErrs...))
 		}
 	}
+
+	// The returned error formats into a readable multi-line error message if formatted with %+v.
 	if errs != nil {
-		return nil, errs
+		return nil, fmt.Errorf("%+v", errs)
 	}
 
 	// final output
@@ -368,9 +377,11 @@ func decodeEncVars(linkMap LinkMap, ctx context) error {
 		return fmt.Errorf("decondeEncVars: %w", err)
 	}
 	// since ctx.enc should always be called first, mark all output Links as encrypted
-	for key, link := range linkMap {
-		link.encrypted = true
-		linkMap[key] = link
+	if !NoDecrypt {
+		for key, link := range linkMap {
+			link.encrypted = true
+			linkMap[key] = link
+		}
 	}
 
 	return nil

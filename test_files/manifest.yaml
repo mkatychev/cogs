@@ -1,3 +1,4 @@
+manifest_var: "manifest_var_value"
 subpath:
   var1: "var1_value"
   var2: "var2_value"
