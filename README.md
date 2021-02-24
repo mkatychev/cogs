@@ -1,3 +1,14 @@
+COGS
+---
+`cogs` is a cli tool that allows generation of configuration values through aggregation and resolution of file path (what file holds your config value) and object path (where in the markup data is the config value) pointers.
+
+`cogs` allows one to deduplicate sources of truth by maintaining a **source of reference** (the cog file) that points to the location of values (such as port numbers and password strings)
+
+Sources of reference include:
+* local files
+* remote files (through HTTP GET requests)
+* SOPS encrypted files (can also be remote)
+
 ## installation: 
 
 With `go`:
@@ -12,6 +23,7 @@ PL="Darwin" VR="0.7.4" \
   tar xvz -C /usr/local/bin cogs
 ```
 
+## help string:
 
 ```
 COGS COnfiguration manaGement S
@@ -111,22 +123,19 @@ Example data can be used as a tutorial run `cogs gen` on the files in the order 
 
 
 ## Notes and references:
-### `envsubst` warning - make sure that any `--envsubst` tags retain a file's membership as valid TOML:
-```toml
-# yes
-[env.vars]
-thing = "${THING_VAR}"
 
-# NO
-[sloppy.vars]${NO}
+`envsubst` warning - make sure that any environmental substition declarations allow a file to be parsed as TOML without the usage of the `--envsubst` flag:
+```toml
+# valid envsubst definitions can be placed anywhere string values are valid
+["${ENV}".vars]
+thing = "${THING_VAR}"
+# the `${ENV}` below creates a TOML read error
+[env.vars]${ENV}
 thing = "${THING_VAR}"
 ```
 
 ### Further references
-
-[TOML spec](https://toml.io/en/v1.0.0-rc.3#keyvalue-pair)
-
-[yq expressions](https://mikefarah.gitbook.io/yq/)
-
-[envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html)
+* [TOML spec](https://toml.io/en/v1.0.0-rc.3#keyvalue-pair)
+* [`yq` expressions](https://mikefarah.gitbook.io/yq/)
+* [envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html)
 
