@@ -85,7 +85,7 @@ Example data can be used as a tutorial run `cogs gen` on the files in the order 
    * `cogs gen basic basic.cog.toml`
 1. secret values and paths example:
    * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
-   * `cogs gen sops secrets.cog.toml.cog.toml`
+   * `cogs gen sops secrets.cog.toml`
 1. read types example:
    * `cogs gen kustomize read_types.cog.toml`
 1. advanced patterns example:
