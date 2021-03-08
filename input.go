@@ -47,20 +47,7 @@ func readFile(filePath string) ([]byte, error) {
 // envSubBytes returns a TOML string with environmental substitution applied, call tldr for more:
 // $ tldr envsubst
 func envSubBytes(bytes []byte) ([]byte, error) {
-	// ------------------------------------------------------------------------
-	// strip comments so we dont do comment substitution by tokenizing the file
-	// and reemitting the file as bytes  ¯\_(ツ)_/¯
-	tree, err := toml.LoadBytes(bytes)
-	if err != nil {
-		return nil, err
-	}
-	noCommentTree, err := toml.Marshal(tree)
-	if err != nil {
-		return nil, err
-	}
-	// ------------------------------------------------------------------------
-
-	substEnv, err := envsubst.EvalEnv(string(noCommentTree))
+	substEnv, err := envsubst.EvalEnv(string(bytes))
 	if err != nil {
 		return nil, err
 	}

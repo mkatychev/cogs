@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const cogsVersion = "0.7.4"
+const cogsVersion = "0.8.0"
 const usage string = `
 COGS COnfiguration manaGement S
 
@@ -59,7 +59,7 @@ var conf Conf
 func main() {
 	err := run()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }

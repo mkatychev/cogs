@@ -30,3 +30,5 @@ vim = "${NVIM#?}"
 vim_e = "${NVIM#[n]}"
 vim_e_neg = "${NVIM#[^vim]}"
 uppercase = "${NVIM^^}"
+newline = """${NEWLINE_VAR}"""
+

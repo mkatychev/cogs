@@ -10,5 +10,7 @@ go build -o ./tmp_cogs ./cmd/cogs
 ./tmp_cogs gen complex_json advanced.cog.toml
 ./tmp_cogs gen inheritor advanced.cog.toml
 ./tmp_cogs gen external_inheritor advanced.cog.toml
-NVIM=nvim ./tmp_cogs gen envsubst envsubst.cog.toml -e
+NEWLINE_VAR="
+This Var is on More than one line
+" NVIM=nvim ./tmp_cogs gen envsubst envsubst.cog.toml -e
 rm ./tmp_cogs

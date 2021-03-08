@@ -35,7 +35,7 @@ type Link struct {
 	remote     bool        // indicates if an HTTP request is needed to return the given document
 	header     http.Header // HTTP request headers
 	method     string      // HTTP request method
-	body       interface{} // HTTP request body
+	body       string      // HTTP request body
 	keys       []string    // key filter for Gear read types
 	readType   ReadType
 }
@@ -119,21 +119,21 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 		if link.Path != "" {
 			if _, ok := pathGroups[link.Path]; !ok {
 				// read plaintext file into bytes
-				loadFileFn := readFile
+				loadFile := readFile
 				link.remote = isValidURL(link.Path)
 				switch {
 				case link.encrypted && link.remote:
-					loadFileFn = func(path string) ([]byte, error) {
+					loadFile = func(path string) ([]byte, error) {
 						return decryptHTTPFile(path, link.header, link.method, link.body)
 					}
 				case link.remote:
-					loadFileFn = func(path string) ([]byte, error) {
+					loadFile = func(path string) ([]byte, error) {
 						return getHTTPFile(path, link.header, link.method, link.body)
 					}
 				case link.encrypted:
-					loadFileFn = decryptFile
+					loadFile = decryptFile
 				}
-				pathGroups[link.Path] = &PathGroup{loadFile: loadFileFn, links: []*Link{}}
+				pathGroups[link.Path] = &PathGroup{loadFile: loadFile, links: []*Link{}}
 			}
 			pathGroups[link.Path].links = append(pathGroups[link.Path].links, link)
 		}
@@ -432,10 +432,10 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 			panic("rGear unsupported at this time")
 		case "header": // "net/http".Header is of type Header map[string][]string
 			link.header = make(http.Header)
-			headerErr := fmt.Errorf("%s.header must map to a string or array of strings", varName)
+			errMsg := fmt.Sprintf("%s.header must map to a string or array of strings", varName)
 			header, ok := v.(map[string]interface{}) // handle single string value header
 			if !ok {
-				return nil, headerErr
+				return nil, errors.New(errMsg)
 			}
 			for headerK, headerV := range header {
 				switch vType := headerV.(type) {
@@ -445,7 +445,7 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 					for _, el := range vType {
 						vStr, ok := el.(string)
 						if !ok {
-							return nil, headerErr
+							return nil, errors.New(errMsg)
 						}
 						link.header[headerK] = append(link.header[headerK], vStr)
 
@@ -455,11 +455,14 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 		case "method":
 			method, ok := v.(string)
 			if !ok {
-				return nil, fmt.Errorf("%s.type must be a string", varName)
+				return nil, fmt.Errorf("%s.metod must be a string", varName)
 			}
 			link.method = method
 		case "body":
-			link.body = v
+			link.body, ok = v.(string)
+			if !ok {
+				return nil, errors.Errorf("%s.body must be a string: %T", varName, v)
+			}
 		default:
 			return nil, fmt.Errorf("%s.%s is an unsupported key name", varName, k)
 		}
