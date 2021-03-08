@@ -2,10 +2,12 @@ package cogs
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/pkg/errors"
 )
 
 // isValidURL tests a string to determine if it is a well-structured url or not.
@@ -23,10 +25,17 @@ func isValidURL(path string) bool {
 	return true
 }
 
-func getHTTPFile(urlPath string, header http.Header) ([]byte, error) {
+func getHTTPFile(urlPath string, header http.Header, method string, body interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 
-	request, err := http.NewRequest("GET", urlPath, nil)
+	if method == "" {
+		method = "GET"
+	}
+
+	payload := new(bytes.Buffer)
+	json.NewEncoder(payload).Encode(body)
+
+	request, err := http.NewRequest(method, urlPath, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +49,7 @@ func getHTTPFile(urlPath string, header http.Header) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, fmt.Errorf("Returned status code of %d", response.StatusCode)
+		return nil, errors.Errorf("%q: %s returned status code of %d", urlPath, method, response.StatusCode)
 	}
 	defer response.Body.Close()
 

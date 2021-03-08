@@ -15,8 +15,8 @@ func decryptFile(filePath string) ([]byte, error) {
 	return decrypt.Data(encData, string(format))
 }
 
-func decryptHTTPFile(urlPath string, header http.Header) ([]byte, error) {
-	encData, err := getHTTPFile(urlPath, header)
+func decryptHTTPFile(urlPath string, header http.Header, method string, body interface{}) ([]byte, error) {
+	encData, err := getHTTPFile(urlPath, header, method, body)
 	if err != nil {
 		return nil, err
 	}

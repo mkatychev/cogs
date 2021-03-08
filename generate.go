@@ -34,6 +34,8 @@ type Link struct {
 	encrypted  bool        // indicates if decryption is needed to resolve Link.Value
 	remote     bool        // indicates if an HTTP request is needed to return the given document
 	header     http.Header // HTTP request headers
+	method     string      // HTTP request method
+	body       interface{} // HTTP request body
 	keys       []string    // key filter for Gear read types
 	readType   ReadType
 }
@@ -122,11 +124,11 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 				switch {
 				case link.encrypted && link.remote:
 					loadFileFn = func(path string) ([]byte, error) {
-						return decryptHTTPFile(path, link.header)
+						return decryptHTTPFile(path, link.header, link.method, link.body)
 					}
 				case link.remote:
 					loadFileFn = func(path string) ([]byte, error) {
-						return getHTTPFile(path, link.header)
+						return getHTTPFile(path, link.header, link.method, link.body)
 					}
 				case link.encrypted:
 					loadFileFn = decryptFile
@@ -450,6 +452,14 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 					}
 				}
 			}
+		case "method":
+			method, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("%s.type must be a string", varName)
+			}
+			link.method = method
+		case "body":
+			link.body = v
 		default:
 			return nil, fmt.Errorf("%s.%s is an unsupported key name", varName, k)
 		}
