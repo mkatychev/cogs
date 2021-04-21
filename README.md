@@ -1,24 +1,32 @@
-COGS
+COGS: COnfiguration manaGement S
 ---
-`cogs` is a cli tool that allows generation of configuration values through aggregation and resolution of file path (what file holds your config value) and object path (where in the markup data is the config value) pointers.
+`cogs` is a cli tool that allows generation of configuration files through different references sources.
 
-`cogs` allows one to deduplicate sources of truth by maintaining a **source of reference** (the cog file) that points to the location of values (such as port numbers and password strings)
+Sources of reference can include:
 
-Sources of reference include:
 * local files
 * remote files (through HTTP GET requests)
-* SOPS encrypted files (can also be remote)
+* [SOPS encrypted files][sops] (can also be remote)
 
-## installation: 
+`cogs` allows one to deduplicate sources of truth by maintaining a **source of reference** (the cog file) that points to the location of values (such as port numbers and password strings).
 
-With `go`:
-* clone this repo, `cd` into it
-* `go build -o $GOPATH/bin ./cmd/cogs`
+## installation:
 
-Without `go`, `PL`atform can be Linux/Windows/Darwin:
+### With `go`:
+
+Clone this repo and `cd` into it.
+
+```sh
+go build -o $GOPATH/bin/ ./cmd/cogs
+```
+
+### Without `go`
+
+`PL`atform can be Linux/Windows/Darwin:
+
 ```sh
 PL="Darwin" VR="0.8.0" \
-  curl -SLk \ 
+  curl -SLk \
   "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
 ```
@@ -41,12 +49,11 @@ Options:
   --not=<key,>     Exclude specific keys, comma separated.
   --out=<type>     Configuration output type [default: json].
                    <type>: json, toml, yaml, dotenv, raw.
-  
+
   --export, -x     If --out=dotenv: Prepends "export " to each line.
   --preserve, -p   If --out=dotenv: Preserves variable casing.
   --sep=<sep>      If --out=raw:    Delimits values with a <sep>arator.
 ```
-
 
 `cogs gen` - outputs a flat and serialized K:V array
 
@@ -74,12 +81,13 @@ look_for_manifest_var.path = "./test_files/manifest.yaml"
 look_for_manifest_var.name = "manifest_var"
 
 # dangling variable names should return an error
-# try uncommenting the line below and run `cogs gen basic basic.cog.toml`
+# try uncommenting the line below and run `cogs gen basic basic.cog.toml`:
 # empty_var.name = "some_name"
 ```
 
 ## example data:
-Example data can be used as a tutorial run `cogs gen` on the files in the order below, run the command once then read the file to soo how the underlying logic is used:
+
+Example data (in `./examples`) can be used as a tutorial run `cogs gen` on the files in the order below, run the command once then read the file to see how the underlying logic is used:
 
 1. basic example:
    * `cogs gen basic basic.cog.toml`
@@ -124,7 +132,7 @@ Example data can be used as a tutorial run `cogs gen` on the files in the order 
 
 ## Notes and references:
 
-`envsubst` warning - make sure that any environmental substition declarations allow a file to be parsed as TOML without the usage of the `--envsubst` flag:
+`envsubst` warning: make sure that any environmental substition declarations allow a file to be parsed as TOML without the usage of the `--envsubst` flag:
 ```toml
 # valid envsubst definitions can be placed anywhere string values are valid
 ["${ENV}".vars]
@@ -139,3 +147,4 @@ thing = "${THING_VAR}"
 * [`yq` expressions](https://mikefarah.gitbook.io/yq/)
 * [envsubst](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html)
 
+[sops]: https://github.com/mozilla/sops

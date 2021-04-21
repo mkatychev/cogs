@@ -36,18 +36,18 @@ jobs:
     - name: Import GPG Key
       run: gpg --import ./test_files/sops_functional_tests_key.asc
     - name: gen docker
-      run: go run ./cmd/cogs gen basic basic.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen basic examples/basic.cog.toml --out=${{ matrix.out }}
     - name: gen sops
-      run: go run ./cmd/cogs gen sops secrets.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen sops examples/secrets.cog.toml --out=${{ matrix.out }}
     - name: gen kustomize
-      run: go run ./cmd/cogs gen kustomize read_types.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen kustomize examples/read_types.cog.toml --out=${{ matrix.out }}
     - name: gen inheritor
-      run: go run ./cmd/cogs gen inheritor advanced.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen inheritor examples/advanced.cog.toml --out=${{ matrix.out }}
     - name: gen external_inheritor
-      run: go run ./cmd/cogs gen external_inheritor advanced.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen external_inheritor examples/advanced.cog.toml --out=${{ matrix.out }}
     - name: gen flat_json
-      run: go run ./cmd/cogs gen flat_json advanced.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen flat_json examples/advanced.cog.toml --out=${{ matrix.out }}
     - name: gen complex_json
-      run: go run ./cmd/cogs gen complex_json advanced.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen complex_json examples/advanced.cog.toml --out=${{ matrix.out }}
     - name: gen envsubst
-      run: go run ./cmd/cogs gen envsubst envsubst.cog.toml --out=${{ matrix.out }}
+      run: go run ./cmd/cogs gen envsubst examples/envsubst.cog.toml --out=${{ matrix.out }}
