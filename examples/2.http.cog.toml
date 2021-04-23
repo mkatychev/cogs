@@ -12,10 +12,15 @@ header.accept = "application/json"
 method = "POST"
 path = "https://httpbin.org/post"
 [post.vars]
-data.path = []
 origin.path = []
-url.path = []
-args = {path = [], type = "json{}"}
-files = {path = [], type = "json{}"}
-form = {path = [], type = "json{}"}
-headers = {path = [], type = "json{}"}
+User-Agent.path = [[], ".headers"]
+
+# TODO implement global body for the same path
+[post_body.vars]
+data = {
+	header.accept = "application/json",
+	method = "POST",
+	path = "https://httpbin.org/post",
+	body = "\"THIS IS THE BODY\"",
+	header.accept = "application/json"
+}
