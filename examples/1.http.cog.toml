@@ -1,6 +1,6 @@
 name = "remote configs"
 
-[test.vars]
+[http.vars]
 # if the file path is a valid URL, then an HTTP request will be made to try to retrieve the file
 core-js.path = [ "https://raw.githubusercontent.com/facebook/react/master/package.json", ".devDependencies"]
 hardcoded_val = "val"

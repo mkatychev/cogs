@@ -87,19 +87,22 @@ look_for_manifest_var.name = "manifest_var"
 
 ## example data:
 
-Example data (in `./examples`) can be used as a tutorial run `cogs gen` on the files in the order below, run the command once then read the file to see how the underlying logic is used:
+The example data (in `./examples`) are ordered by increasing complexity and should be used as a tutorial. Run `cogs gen` on the files in the order below,
+then read the file to see how the underlying logic is used.
 
 1. basic example:
-   * `cogs gen basic basic.cog.toml`
+   * `cogs gen basic 1.basic.cog.toml`
+1. HTTP example:
+   * `cogs gen http 1.http.cog.toml`
 1. secret values and paths example:
    * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
-   * `cogs gen sops secrets.cog.toml`
+   * `cogs gen sops 2.secrets.cog.toml`
 1. read types example:
-   * `cogs gen kustomize read_types.cog.toml`
+   * `cogs gen kustomize 3.read_types.cog.toml`
 1. advanced patterns example:
-   * `cogs gen kustomize read_types.cog.toml`
+   * `cogs gen complex_json 4.advanced.cog.toml`
 1. envsubst patterns example:
-   * `NVIM=nvim cogs gen envsubst envsubst.cog.toml --envsubst`
+   * `NVIM=nvim cogs gen envsubst 5.envsubst.cog.toml --envsubst`
 
 ## `envsubst` cheatsheet:
 
