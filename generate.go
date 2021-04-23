@@ -395,7 +395,7 @@ func decodeVars(linkMap LinkMap, ctx context) error {
 func decodeEncVars(linkMap LinkMap, ctx context) error {
 	err := decodeVars(linkMap, ctx)
 	if err != nil {
-		return fmt.Errorf("decondeEncVars: %w", err)
+		return fmt.Errorf("decodeEncVars: %w", err)
 	}
 	// since ctx.enc should always be called first, mark all output Links as encrypted
 	if !NoDecrypt {
