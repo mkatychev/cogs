@@ -345,7 +345,7 @@ func visitMap(cache map[string]interface{}, node *yaml.Node, rType ReadType) err
 		}
 		strEnv = strings.Join(sliceEnv, "\n")
 	}
-	unmarshal, err := rType.GetUnmarshal()
+	unmarshal, err := rType.getUnmarshal()
 	if err != nil {
 		return errors.Wrap(err, "visitMap")
 	}
@@ -361,7 +361,7 @@ func visitComplex(cache map[string]interface{}, node *yaml.Node, rType ReadType)
 	if err := node.Decode(&strEnv); err != nil {
 		return fmt.Errorf("Unable to decode node kind: %s to complex JSON format: %w", kindStr[node.Kind], err)
 	}
-	unmarshal, err := rType.GetUnmarshal()
+	unmarshal, err := rType.getUnmarshal()
 	if err != nil {
 		return fmt.Errorf("visitComplex: %w", err)
 	}

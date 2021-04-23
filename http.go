@@ -72,3 +72,29 @@ func getHTTPFile(urlPath string, header http.Header, method, body string) ([]byt
 
 	return buf.Bytes(), nil
 }
+
+func parseHeader(v interface{}) (http.Header, error) {
+	errMsg := "object must map to a string or array of strings"
+	rawHeader, ok := v.(map[string]interface{}) // handle single string value header
+	if !ok {
+		return nil, errors.New(errMsg)
+	}
+	header := make(http.Header)
+	for headerK, headerV := range rawHeader {
+		switch vType := headerV.(type) {
+		case string:
+			header[headerK] = append(header[headerK], vType)
+		case []interface{}: // go is unable to check for headerV.([]string) on initial cast
+			for _, el := range vType {
+				vStr, ok := el.(string)
+				if !ok {
+					return nil, errors.New(errMsg)
+				}
+				header[headerK] = append(header[headerK], vStr)
+
+			}
+		}
+	}
+
+	return header, nil
+}

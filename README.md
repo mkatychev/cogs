@@ -5,7 +5,7 @@ COGS: COnfiguration manaGement S
 Sources of reference can include:
 
 * local files
-* remote files (through HTTP GET requests)
+* remote files (through [HTTP requests](examples/2.http.cog.toml))
 * [SOPS encrypted files][sops] (can also be remote)
 
 `cogs` allows one to deduplicate sources of truth by maintaining a **source of reference** (the cog file) that points to the location of values (such as port numbers and password strings).
@@ -25,7 +25,7 @@ go build -o $GOPATH/bin/ ./cmd/cogs
 `PL`atform can be Linux/Windows/Darwin:
 
 ```sh
-PL="Darwin" VR="0.8.0" \
+PL="Darwin" VR="0.9.0" \
   curl -SLk \
   "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
@@ -57,7 +57,7 @@ Options:
 
 `cogs gen` - outputs a flat and serialized K:V array
 
-## annotated spec:
+## [annotated spec](./examples/1.basic.cog.toml):
 
 ```toml
 name = "basic example" # every cog manifest should have a name key that corresponds to a string
@@ -92,17 +92,18 @@ then read the file to see how the underlying logic is used.
 
 1. basic example:
    * `cogs gen basic 1.basic.cog.toml`
-1. HTTP example:
-   * `cogs gen http 1.http.cog.toml`
+1. HTTP examples:
+   * `cogs gen get 2.http.cog.toml`, GET example 
+   * `cogs gen post 2.http.cog.toml`, POST example:
 1. secret values and paths example:
    * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
-   * `cogs gen sops 2.secrets.cog.toml`
+   * `cogs gen sops 3.secrets.cog.toml`
 1. read types example:
-   * `cogs gen kustomize 3.read_types.cog.toml`
+   * `cogs gen kustomize 4.read_types.cog.toml`
 1. advanced patterns example:
-   * `cogs gen complex_json 4.advanced.cog.toml`
+   * `cogs gen complex_json 5.advanced.cog.toml`
 1. envsubst patterns example:
-   * `NVIM=nvim cogs gen envsubst 5.envsubst.cog.toml --envsubst`
+   * `NVIM=nvim cogs gen envsubst 6.envsubst.cog.toml --envsubst`
 
 ## `envsubst` cheatsheet:
 

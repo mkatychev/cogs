@@ -1,0 +1,21 @@
+name = "remote configs"
+
+# GET is the default request type
+[get.vars]
+# if the file path is a valid URL, then an HTTP request will be made to try to retrieve the file
+core-js.path = [ "https://raw.githubusercontent.com/facebook/react/master/package.json", ".devDependencies"]
+hardcoded_val = "val"
+
+# https://httpbin.org/#/HTTP_Methods/post_post
+[post]
+header.accept = "application/json"
+method = "POST"
+path = "https://httpbin.org/post"
+[post.vars]
+data.path = []
+origin.path = []
+url.path = []
+args = {path = [], type = "json{}"}
+files = {path = [], type = "json{}"}
+form = {path = [], type = "json{}"}
+headers = {path = [], type = "json{}"}
