@@ -10,15 +10,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GET is the default request type
+var DefaultMethod string = "GET"
+
 // isValidURL tests a string to determine if it is a well-structured url or not.
 func isValidURL(path string) bool {
-	_, err := url.ParseRequestURI(path)
-	if err != nil {
+	if _, err := url.ParseRequestURI(path); err != nil {
 		return false
 	}
 
-	u, err := url.Parse(path)
-	if err != nil || u.Scheme == "" || u.Host == "" {
+	if u, err := url.Parse(path); err != nil || u.Scheme == "" || u.Host == "" {
 		return false
 	}
 
@@ -29,7 +30,7 @@ func getHTTPFile(urlPath string, header http.Header, method, body string) ([]byt
 	var buf bytes.Buffer
 
 	if method == "" {
-		method = "GET"
+		method = DefaultMethod
 	}
 
 	var i interface{}

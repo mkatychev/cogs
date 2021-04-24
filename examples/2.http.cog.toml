@@ -11,16 +11,8 @@ hardcoded_val = "val"
 header.accept = "application/json"
 method = "POST"
 path = "https://httpbin.org/post"
+body = "{\"valid_json\": true}"
 [post.vars]
 origin.path = []
+data.path = []
 User-Agent.path = [[], ".headers"]
-
-# TODO implement global body for the same path
-[post_body.vars]
-data = {
-	header.accept = "application/json",
-	method = "POST",
-	path = "https://httpbin.org/post",
-	body = "\"THIS IS THE BODY\"",
-	header.accept = "application/json"
-}

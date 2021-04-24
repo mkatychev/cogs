@@ -317,6 +317,7 @@ type baseContext struct {
 	Enc      context     `mapstructure:",omitempty"`
 	Header   interface{} `mapstructure:",omitempty"`
 	Method   string      `mapstructure:",omitempty"`
+	Body     string      `mapstructure:",omitempty"`
 }
 
 // toContext returns the unencrypted context properties ignoring baseContext.Enc
@@ -328,6 +329,7 @@ func (b baseContext) toContext() context {
 		Vars:     b.Vars,
 		Header:   b.Header,
 		Method:   b.Method,
+		Body:     b.Body,
 	}
 }
 
@@ -339,6 +341,7 @@ type context struct {
 	Vars     CfgMap      `mapstructure:",omitempty"`
 	Header   interface{} `mapstructure:",omitempty"`
 	Method   string      `mapstructure:",omitempty"`
+	Body     string      `mapstructure:",omitempty"`
 }
 
 func decodeVars(linkMap LinkMap, ctx context) error {
@@ -369,6 +372,8 @@ func decodeVars(linkMap LinkMap, ctx context) error {
 	}
 	// HTTP method
 	baseLink.method = ctx.Method
+	// HTTP body
+	baseLink.body = ctx.Body
 	// -------------------
 
 	// check for duplicate keys for ctx.vars and ctx.enc.vars
@@ -504,6 +509,9 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 		}
 		if _, ok := cfgMap["method"]; !ok {
 			link.method = baseLink.method
+		}
+		if _, ok := cfgMap["body"]; !ok {
+			link.body = baseLink.body
 		}
 	}
 
