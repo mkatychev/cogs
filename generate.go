@@ -27,9 +27,8 @@ var RecursionLimit int = 12
 // distinctPath is used to separate k/v pairs that share the same URL path but
 // with differing bodies/headers/methods
 type distinctPath struct {
-	path string
-	// TODO map[string][]string is incomparable
-	// header []string
+	path   string
+	header string
 	method string
 	body   string
 }
@@ -53,10 +52,16 @@ type Link struct {
 // GetDistinctPath returns the Link properties needed to differentiate Links with identical paths
 // but differing HTTP properties
 func (c Link) GetDistinctPath() distinctPath {
+	header := ""
+	// NOTE starting with Go 1.12, the fmt package prints maps in key-sorted order to ease testing.
+	// https://golang.org/doc/go1.12#fmt
+	if c.header != nil {
+		header = fmt.Sprintf("%v", c.header)
+	}
+
 	return distinctPath{
-		path: c.Path,
-		// TODO map[string][]string is incomparable
-		// header: c.header.Values(),
+		path:   c.Path,
+		header: header,
 		method: c.method,
 		body:   c.body,
 	}
@@ -147,21 +152,21 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 			// read plaintext file into bytes
 			loadFile := readFile
 			switch {
-			case link.encrypted && link.remote:
-				header := link.header
-				method := link.method
-				body := link.body
-				loadFile = func(path string) ([]byte, error) {
-					return decryptHTTPFile(path, header, method, body)
-				}
 			case link.remote:
-				// must explicitly define variable for anonymous function or
-				// previous link properties will be used in anonymous func
+				// must explicitly define variables
+				// or previous link values will bleed into loadFile func
 				header := link.header
 				method := link.method
 				body := link.body
-				loadFile = func(path string) ([]byte, error) {
-					return getHTTPFile(path, header, method, body)
+
+				if link.encrypted {
+					loadFile = func(path string) ([]byte, error) {
+						return decryptHTTPFile(path, header, method, body)
+					}
+				} else {
+					loadFile = func(path string) ([]byte, error) {
+						return getHTTPFile(path, header, method, body)
+					}
 				}
 			case link.encrypted:
 				loadFile = decryptFile
