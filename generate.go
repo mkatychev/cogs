@@ -49,9 +49,9 @@ type Link struct {
 	readType   ReadType
 }
 
-// GetDistinctPath returns the Link properties needed to differentiate Links with identical paths
+// distinctPath returns the Link properties needed to differentiate Links with identical paths
 // but differing HTTP properties
-func (c Link) GetDistinctPath() distinctPath {
+func (c Link) distinctPath() distinctPath {
 	header := ""
 	// NOTE starting with Go 1.12, the fmt package prints maps in key-sorted order to ease testing.
 	// https://golang.org/doc/go1.12#fmt
@@ -148,7 +148,7 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 			continue
 		}
 
-		if _, ok := pathGroups[link.GetDistinctPath()]; !ok {
+		if _, ok := pathGroups[link.distinctPath()]; !ok {
 			// read plaintext file into bytes
 			loadFile := readFile
 			switch {
@@ -171,9 +171,9 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 			case link.encrypted:
 				loadFile = decryptFile
 			}
-			pathGroups[link.GetDistinctPath()] = &PathGroup{loadFile: loadFile, links: []*Link{}}
+			pathGroups[link.distinctPath()] = &PathGroup{loadFile: loadFile, links: []*Link{}}
 		}
-		pathGroups[link.GetDistinctPath()].links = append(pathGroups[link.GetDistinctPath()].links, link)
+		pathGroups[link.distinctPath()].links = append(pathGroups[link.distinctPath()].links, link)
 	}
 
 	var errs error

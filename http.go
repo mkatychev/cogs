@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GET is the default request type
+// DefaultMethod uses GET for the default request type
 var DefaultMethod string = "GET"
 
 // isValidURL tests a string to determine if it is a well-structured url or not.

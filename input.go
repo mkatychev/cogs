@@ -316,12 +316,12 @@ func visitDotenv(cache map[string]interface{}, node *yaml.Node) (err error) {
 	if err = node.Decode(&strEnv); err != nil {
 		var sliceEnv []string
 		if err := node.Decode(&sliceEnv); err != nil {
-			return fmt.Errorf("Unable to decode node kind %s to dotenv format: %w", kindStr[node.Kind], err)
+			return fmt.Errorf("unable to decode node kind %s to dotenv format: %w", kindStr[node.Kind], err)
 		}
 		strEnv = strings.Join(sliceEnv, "\n")
 	}
-	dotenvMap := make(map[string]string)
-	dotenvMap, err = godotenv.Unmarshal(strEnv)
+
+	dotenvMap, err := godotenv.Unmarshal(strEnv)
 	if err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func visitMap(cache map[string]interface{}, node *yaml.Node, rType ReadType) err
 	if err := node.Decode(&strEnv); err != nil {
 		var sliceEnv []string
 		if err := node.Decode(&sliceEnv); err != nil {
-			return fmt.Errorf("Unable to decode node kind: %s to flat JSON format", kindStr[node.Kind])
+			return fmt.Errorf("unable to decode node kind: %s to flat JSON format", kindStr[node.Kind])
 		}
 		strEnv = strings.Join(sliceEnv, "\n")
 	}
@@ -359,7 +359,7 @@ func visitComplex(cache map[string]interface{}, node *yaml.Node, rType ReadType)
 
 	var strEnv string
 	if err := node.Decode(&strEnv); err != nil {
-		return fmt.Errorf("Unable to decode node kind: %s to complex JSON format: %w", kindStr[node.Kind], err)
+		return fmt.Errorf("unable to decode node kind: %s to complex JSON format: %w", kindStr[node.Kind], err)
 	}
 	unmarshal, err := rType.getUnmarshal()
 	if err != nil {

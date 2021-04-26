@@ -62,7 +62,7 @@ func (t ReadType) getUnmarshal() (unmarshalFn, error) {
 	case rYAML, rYAMLComplex:
 		return yaml.Unmarshal, nil
 	}
-	return nil, fmt.Errorf("Unsupported type for GetUnmarshal: %s", t)
+	return nil, fmt.Errorf("unsupported type for GetUnmarshal: %s", t)
 }
 
 func (t ReadType) String() string {
