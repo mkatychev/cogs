@@ -23,9 +23,10 @@ User-Agent.path = [[], ".headers"]
 header.accept = "application/json"
 method = "POST"
 path = "https://httpbin.org/post"
-body = "\"this_data\""
+body = "\"this_data_body\""
+type = "whole"
 [post_multiple.vars]
-data.path = []
+this_data.path = []
 # other_data has a unique body but inherits the header, method, and path
 # thus it will do a separate HTTP POST
-other_data = { path = [], body = "\"other_data\"", name = "data" }
+other_data = { path = [], body = "\"other_data_body\"" }

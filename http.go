@@ -92,7 +92,6 @@ func parseHeader(v interface{}) (http.Header, error) {
 					return nil, errors.New(errMsg)
 				}
 				header[headerK] = append(header[headerK], vStr)
-
 			}
 		}
 	}
