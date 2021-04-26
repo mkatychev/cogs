@@ -24,6 +24,16 @@ var EnvSubst bool = false
 // RecursionLimit is the limit used to define when to abort successive traversals of gears
 var RecursionLimit int = 12
 
+// distinctPath is used to separate k/v pairs that share the same URL path but
+// with differing bodies/headers/methods
+type distinctPath struct {
+	path string
+	// TODO map[string][]string is incomparable
+	// header []string
+	method string
+	body   string
+}
+
 // Link holds all the data needed to resolve one string key value pair
 type Link struct {
 	KeyName    string      // the key name defined in the context file
@@ -38,6 +48,18 @@ type Link struct {
 	body       string      // HTTP request body
 	keys       []string    // key filter for Gear read types
 	readType   ReadType
+}
+
+// GetDistinctPath returns the Link properties needed to differentiate Links with identical paths
+// but differing HTTP properties
+func (c Link) GetDistinctPath() distinctPath {
+	return distinctPath{
+		path: c.Path,
+		// TODO map[string][]string is incomparable
+		// header: c.header.Values(),
+		method: c.method,
+		body:   c.body,
+	}
 }
 
 // String holds the string representation of a Link struct
@@ -112,39 +134,50 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 		loadFile func(filePath string) ([]byte, error)
 		links    []*Link
 	}
-	pathGroups := make(map[string]*PathGroup)
+
+	pathGroups := make(map[distinctPath]*PathGroup)
 
 	// 1. sort Links by Path
 	for _, link := range g.linkMap {
-		if link.Path != "" {
-			if _, ok := pathGroups[link.Path]; !ok {
-				// read plaintext file into bytes
-				loadFile := readFile
-				switch {
-				case link.encrypted && link.remote:
-					loadFile = func(path string) ([]byte, error) {
-						return decryptHTTPFile(path, link.header, link.method, link.body)
-					}
-				case link.remote:
-					loadFile = func(path string) ([]byte, error) {
-						return getHTTPFile(path, link.header, link.method, link.body)
-					}
-				case link.encrypted:
-					loadFile = decryptFile
-				}
-				pathGroups[link.Path] = &PathGroup{loadFile: loadFile, links: []*Link{}}
-			}
-			pathGroups[link.Path].links = append(pathGroups[link.Path].links, link)
+		if link.Path == "" {
+			continue
 		}
+
+		if _, ok := pathGroups[link.GetDistinctPath()]; !ok {
+			// read plaintext file into bytes
+			loadFile := readFile
+			switch {
+			case link.encrypted && link.remote:
+				header := link.header
+				method := link.method
+				body := link.body
+				loadFile = func(path string) ([]byte, error) {
+					return decryptHTTPFile(path, header, method, body)
+				}
+			case link.remote:
+				// must explicitly define variable for anonymous function or
+				// previous link properties will be used in anonymous func
+				header := link.header
+				method := link.method
+				body := link.body
+				loadFile = func(path string) ([]byte, error) {
+					return getHTTPFile(path, header, method, body)
+				}
+			case link.encrypted:
+				loadFile = decryptFile
+			}
+			pathGroups[link.GetDistinctPath()] = &PathGroup{loadFile: loadFile, links: []*Link{}}
+		}
+		pathGroups[link.GetDistinctPath()].links = append(pathGroups[link.GetDistinctPath()].links, link)
 	}
 
 	var errs error
 	for p, pGroup := range pathGroups {
 		var fileBuf []byte
 		// 2. for each distinct Path: generate a Reader object
-		linkFilePath := g.getLinkFilePath(p)
+		linkFilePath := g.getLinkFilePath(p.path)
 		// if link.Path references the cog file, return the already read (and envsubst applied) value
-		if p == selfPath {
+		if p.path == selfPath {
 			fileBuf = g.fileValue
 		} else if fileBuf, err = pGroup.loadFile(linkFilePath); err != nil {
 			if os.IsNotExist(err) {
