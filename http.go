@@ -10,15 +10,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// DefaultMethod uses GET for the default request type
+var DefaultMethod string = http.MethodGet
+
 // isValidURL tests a string to determine if it is a well-structured url or not.
 func isValidURL(path string) bool {
-	_, err := url.ParseRequestURI(path)
-	if err != nil {
+	if _, err := url.ParseRequestURI(path); err != nil {
 		return false
 	}
 
-	u, err := url.Parse(path)
-	if err != nil || u.Scheme == "" || u.Host == "" {
+	if u, err := url.Parse(path); err != nil || u.Scheme == "" || u.Host == "" {
 		return false
 	}
 
@@ -29,7 +30,7 @@ func getHTTPFile(urlPath string, header http.Header, method, body string) ([]byt
 	var buf bytes.Buffer
 
 	if method == "" {
-		method = "GET"
+		method = DefaultMethod
 	}
 
 	var i interface{}
@@ -71,4 +72,29 @@ func getHTTPFile(urlPath string, header http.Header, method, body string) ([]byt
 	defer response.Body.Close()
 
 	return buf.Bytes(), nil
+}
+
+func parseHeader(v interface{}) (http.Header, error) {
+	errMsg := "object must map to a string or array of strings"
+	rawHeader, ok := v.(map[string]interface{}) // handle single string value header
+	if !ok {
+		return nil, errors.New(errMsg)
+	}
+	header := make(http.Header)
+	for headerK, headerV := range rawHeader {
+		switch vType := headerV.(type) {
+		case string:
+			header[headerK] = append(header[headerK], vType)
+		case []interface{}: // go is unable to check for headerV.([]string) on initial cast
+			for _, el := range vType {
+				vStr, ok := el.(string)
+				if !ok {
+					return nil, errors.New(errMsg)
+				}
+				header[headerK] = append(header[headerK], vStr)
+			}
+		}
+	}
+
+	return header, nil
 }

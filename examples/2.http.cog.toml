@@ -1,0 +1,32 @@
+name = "remote configs"
+
+# GET is the default request type
+[get.vars]
+# if the file path is a valid URL, then an HTTP request will be made to try to retrieve the file
+core-js.path = [ "https://raw.githubusercontent.com/facebook/react/master/package.json", ".devDependencies"]
+hardcoded_val = "val"
+
+# https://httpbin.org/#/HTTP_Methods/post_post
+[post]
+header.accept = "application/json"
+method = "POST"
+path = "https://httpbin.org/post"
+body = "{\"valid_json\": true}"
+[post.vars]
+origin.path = []
+data.path = []
+User-Agent.path = [[], ".headers"]
+
+# post_multiple shows how HTTP k/v pairs can differ in their
+# "full path" if properties like body, method, or headers change
+[post_multiple]
+header.accept = "application/json"
+method = "POST"
+path = "https://httpbin.org/post"
+body = "\"this_data_body\""
+type = "whole"
+[post_multiple.vars]
+this_data.path = []
+# other_data has a unique body but inherits the header, method, and path
+# thus it will do a separate HTTP POST
+other_data = { path = [], body = "\"other_data_body\"" }

@@ -24,6 +24,15 @@ var EnvSubst bool = false
 // RecursionLimit is the limit used to define when to abort successive traversals of gears
 var RecursionLimit int = 12
 
+// distinctPath is used to separate k/v pairs that share the same URL path but
+// with differing bodies/headers/methods
+type distinctPath struct {
+	path   string
+	header string
+	method string
+	body   string
+}
+
 // Link holds all the data needed to resolve one string key value pair
 type Link struct {
 	KeyName    string      // the key name defined in the context file
@@ -38,6 +47,24 @@ type Link struct {
 	body       string      // HTTP request body
 	keys       []string    // key filter for Gear read types
 	readType   ReadType
+}
+
+// distinctPath returns the Link properties needed to differentiate Links with identical paths
+// but differing HTTP properties
+func (c Link) distinctPath() distinctPath {
+	header := ""
+	// NOTE starting with Go 1.12, the fmt package prints maps in key-sorted order to ease testing.
+	// https://golang.org/doc/go1.12#fmt
+	if c.header != nil {
+		header = fmt.Sprintf("%v", c.header)
+	}
+
+	return distinctPath{
+		path:   c.Path,
+		header: header,
+		method: c.method,
+		body:   c.body,
+	}
 }
 
 // String holds the string representation of a Link struct
@@ -112,40 +139,50 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 		loadFile func(filePath string) ([]byte, error)
 		links    []*Link
 	}
-	pathGroups := make(map[string]*PathGroup)
+
+	pathGroups := make(map[distinctPath]*PathGroup)
 
 	// 1. sort Links by Path
 	for _, link := range g.linkMap {
-		if link.Path != "" {
-			if _, ok := pathGroups[link.Path]; !ok {
-				// read plaintext file into bytes
-				loadFile := readFile
-				link.remote = isValidURL(link.Path)
-				switch {
-				case link.encrypted && link.remote:
-					loadFile = func(path string) ([]byte, error) {
-						return decryptHTTPFile(path, link.header, link.method, link.body)
-					}
-				case link.remote:
-					loadFile = func(path string) ([]byte, error) {
-						return getHTTPFile(path, link.header, link.method, link.body)
-					}
-				case link.encrypted:
-					loadFile = decryptFile
-				}
-				pathGroups[link.Path] = &PathGroup{loadFile: loadFile, links: []*Link{}}
-			}
-			pathGroups[link.Path].links = append(pathGroups[link.Path].links, link)
+		if link.Path == "" {
+			continue
 		}
+
+		if _, ok := pathGroups[link.distinctPath()]; !ok {
+			// read plaintext file into bytes
+			loadFile := readFile
+			switch {
+			case link.remote:
+				// must explicitly define variables
+				// or previous link values will bleed into loadFile func
+				header := link.header
+				method := link.method
+				body := link.body
+
+				if link.encrypted {
+					loadFile = func(path string) ([]byte, error) {
+						return decryptHTTPFile(path, header, method, body)
+					}
+				} else {
+					loadFile = func(path string) ([]byte, error) {
+						return getHTTPFile(path, header, method, body)
+					}
+				}
+			case link.encrypted:
+				loadFile = decryptFile
+			}
+			pathGroups[link.distinctPath()] = &PathGroup{loadFile: loadFile, links: []*Link{}}
+		}
+		pathGroups[link.distinctPath()].links = append(pathGroups[link.distinctPath()].links, link)
 	}
 
 	var errs error
 	for p, pGroup := range pathGroups {
 		var fileBuf []byte
 		// 2. for each distinct Path: generate a Reader object
-		linkFilePath := g.getLinkFilePath(p)
+		linkFilePath := g.getLinkFilePath(p.path)
 		// if link.Path references the cog file, return the already read (and envsubst applied) value
-		if p == selfPath {
+		if p.path == selfPath {
 			fileBuf = g.fileValue
 		} else if fileBuf, err = pGroup.loadFile(linkFilePath); err != nil {
 			if os.IsNotExist(err) {
@@ -316,22 +353,33 @@ type baseContext struct {
 	Name     string      `mapstructure:",omitempty"`
 	Vars     CfgMap      `mapstructure:",omitempty"`
 	Enc      context     `mapstructure:",omitempty"`
+	Header   interface{} `mapstructure:",omitempty"`
+	Method   string      `mapstructure:",omitempty"`
+	Body     string      `mapstructure:",omitempty"`
 }
 
+// toContext returns the unencrypted context properties ignoring baseContext.Enc
 func (b baseContext) toContext() context {
 	return context{
 		Path:     b.Path,
 		ReadType: b.ReadType,
 		Name:     b.Name,
 		Vars:     b.Vars,
+		Header:   b.Header,
+		Method:   b.Method,
+		Body:     b.Body,
 	}
 }
 
+// context is a struct meant to represent both encrypted and plaintext sections of a baseContext
 type context struct {
 	Path     interface{} `mapstructure:",omitempty"`
 	ReadType string      `mapstructure:"type,omitempty"`
 	Name     string      `mapstructure:",omitempty"`
 	Vars     CfgMap      `mapstructure:",omitempty"`
+	Header   interface{} `mapstructure:",omitempty"`
+	Method   string      `mapstructure:",omitempty"`
+	Body     string      `mapstructure:",omitempty"`
 }
 
 func decodeVars(linkMap LinkMap, ctx context) error {
@@ -344,13 +392,27 @@ func decodeVars(linkMap LinkMap, ctx context) error {
 			return err
 		}
 	}
-	// global search name
+
+	// baseContext globals
+	// -------------------
+	// name
 	baseLink.SearchName = ctx.Name
-	// global type
+	// type
 	baseLink.readType = ReadType(ctx.ReadType)
 	if err := baseLink.readType.Validate(); err != nil {
 		return err
 	}
+	// HTTP header
+	if ctx.Header != nil {
+		if baseLink.header, err = parseHeader(ctx.Header); err != nil {
+			return errors.Wrap(err, ctx.Name)
+		}
+	}
+	// HTTP method
+	baseLink.method = ctx.Method
+	// HTTP body
+	baseLink.body = ctx.Body
+	// -------------------
 
 	// check for duplicate keys for ctx.vars and ctx.enc.vars
 	for k, v := range ctx.Vars {
@@ -376,7 +438,7 @@ func decodeVars(linkMap LinkMap, ctx context) error {
 func decodeEncVars(linkMap LinkMap, ctx context) error {
 	err := decodeVars(linkMap, ctx)
 	if err != nil {
-		return fmt.Errorf("decondeEncVars: %w", err)
+		return fmt.Errorf("decodeEncVars: %w", err)
 	}
 	// since ctx.enc should always be called first, mark all output Links as encrypted
 	if !NoDecrypt {
@@ -393,6 +455,7 @@ func decodeEncVars(linkMap LinkMap, ctx context) error {
 func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) {
 	var link Link
 	var ok bool
+	var err error
 
 	for k, v := range cfgMap {
 		switch k {
@@ -431,31 +494,13 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 			}
 			panic("rGear unsupported at this time")
 		case "header": // "net/http".Header is of type Header map[string][]string
-			link.header = make(http.Header)
-			errMsg := fmt.Sprintf("%s.header must map to a string or array of strings", varName)
-			header, ok := v.(map[string]interface{}) // handle single string value header
-			if !ok {
-				return nil, errors.New(errMsg)
-			}
-			for headerK, headerV := range header {
-				switch vType := headerV.(type) {
-				case string:
-					link.header[headerK] = append(link.header[headerK], vType)
-				case []interface{}: // go is unable to check for headerV.([]string)
-					for _, el := range vType {
-						vStr, ok := el.(string)
-						if !ok {
-							return nil, errors.New(errMsg)
-						}
-						link.header[headerK] = append(link.header[headerK], vStr)
-
-					}
-				}
+			if link.header, err = parseHeader(v); err != nil {
+				return nil, errors.Wrapf(err, "%s.header", varName)
 			}
 		case "method":
 			method, ok := v.(string)
 			if !ok {
-				return nil, fmt.Errorf("%s.metod must be a string", varName)
+				return nil, fmt.Errorf("%s.method must be a string", varName)
 			}
 			link.method = method
 		case "body":
@@ -469,11 +514,11 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 
 	}
 
+	// TODO simplify implicit inheritance, this is janky
 	// if Path is empty string
 	if link.Path == "" {
 		return nil, fmt.Errorf("%s does not have a value assigned or %s.path defined", varName, varName)
 	}
-
 	// if readType was not specified:
 	if _, ok := cfgMap["type"]; !ok {
 		if baseLink != nil {
@@ -490,6 +535,21 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 		// if ctx.name was set then and var.name was not defined then inherit SearchName from baseLink
 		if baseLink.SearchName != "" {
 			link.SearchName = baseLink.SearchName
+		}
+	}
+
+	link.remote = isValidURL(link.Path)
+	// implicit header and method inheritance
+	// if path is a URL & baseLink is non-nil
+	if link.remote && baseLink != nil {
+		if _, ok := cfgMap["header"]; !ok && baseLink.header != nil {
+			link.header = baseLink.header
+		}
+		if _, ok := cfgMap["method"]; !ok {
+			link.method = baseLink.method
+		}
+		if _, ok := cfgMap["body"]; !ok {
+			link.body = baseLink.body
 		}
 	}
 

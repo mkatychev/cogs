@@ -52,8 +52,8 @@ func (t ReadType) isComplex() bool {
 
 type unmarshalFn func([]byte, interface{}) error
 
-// GetUnmarshal returns the corresponding function to unmarshal a given read type
-func (t ReadType) GetUnmarshal() (unmarshalFn, error) {
+// getUnmarshal returns the corresponding function to unmarshal a given read type
+func (t ReadType) getUnmarshal() (unmarshalFn, error) {
 	switch t {
 	case rJSON, rJSONComplex:
 		return json.Unmarshal, nil
@@ -62,7 +62,7 @@ func (t ReadType) GetUnmarshal() (unmarshalFn, error) {
 	case rYAML, rYAMLComplex:
 		return yaml.Unmarshal, nil
 	}
-	return nil, fmt.Errorf("Unsupported type for GetUnmarshal: %s", t)
+	return nil, fmt.Errorf("unsupported type for GetUnmarshal: %s", t)
 }
 
 func (t ReadType) String() string {
@@ -92,8 +92,8 @@ func (t ReadType) String() string {
 	}
 }
 
-// TODO reconcile readType and Format patterns
 // Format represents the final marshalled k/v output type from a resolved Gear
+// TODO reconcile readType and Format patterns
 type Format string
 
 // Formats for respective object notation
