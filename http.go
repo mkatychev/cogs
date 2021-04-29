@@ -11,7 +11,7 @@ import (
 )
 
 // DefaultMethod uses GET for the default request type
-var DefaultMethod string = "GET"
+var DefaultMethod string = http.MethodGet
 
 // isValidURL tests a string to determine if it is a well-structured url or not.
 func isValidURL(path string) bool {
