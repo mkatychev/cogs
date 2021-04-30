@@ -249,10 +249,7 @@ func (g *Gear) getLinkFilePath(linkPath string) string {
 	if path.IsAbs(linkPath) || isValidURL(linkPath) {
 		return linkPath
 	}
-	dir, err := os.Getwd()
-	if err != nil {
-		dir = path.Dir(g.filePath)
-	}
+	dir := path.Dir(g.filePath)
 	return path.Join(dir, linkPath)
 }
 

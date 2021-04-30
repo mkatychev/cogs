@@ -25,7 +25,7 @@ go build -o $GOPATH/bin/ ./cmd/cogs
 `PL`atform can be Linux/Windows/Darwin:
 
 ```sh
-PL="Darwin" VR="0.9.0" \
+PL="Darwin" VR="0.9.1" \
   curl -SLk \
   "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
@@ -60,28 +60,31 @@ Options:
 ## [annotated spec](./examples/1.basic.cog.toml):
 
 ```toml
-name = "basic example" # every cog manifest should have a name key that corresponds to a string
+ # every cog manifest should have a name key that corresponds to a string
+name = "basic example"
 
 # key value pairs for a context/ctx are defined under <ctx>.vars
-# try running `cogs gen basic basic.cog.toml` to see what output cogs generates
+# try running `cogs gen basic ./examples/1.basic.cog.toml` to see what output
+# cogs generates
 [basic.vars]
 var = "var_value"
 other_var = "other_var_value"
 
 # if <var>.path is given a string value,
-# cogs will look for the key name of <var> in the file that that corresponds to the <var>.path key,
+# cogs will look for the key name of <var> in the file that that corresponds to
+# the <var>.path key,
 # returning the corresponding value
-manifest_var.path = "./test_files/manifest.yaml"
+manifest_var.path = "../test_files/manifest.yaml"
 # try removing manifest_var from "./test_files/manifest.yaml" and see what happens
 
-# some variables can set an explicit key name to look for instead of defaulting to look for
-# the key name "<var>":
+# some variables can set an explicit key name to look for instead of defaulting
+# to look for the key name "<var>":
 # if <var>.name is defined then cogs will look for a key name that matches <var>.name
-look_for_manifest_var.path = "./test_files/manifest.yaml"
+look_for_manifest_var.path = "../test_files/manifest.yaml"
 look_for_manifest_var.name = "manifest_var"
 
 # dangling variable names should return an error
-# try uncommenting the line below and run `cogs gen basic basic.cog.toml`:
+# uncomment the line below and run `cogs gen basic ./examples/1.basic.cog.toml`:
 # empty_var.name = "some_name"
 ```
 
