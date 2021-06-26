@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const cogsVersion = "0.9.1"
+const cogsVersion = "0.10.0"
 const usage string = `
 COGS COnfiguration manaGement S
 
