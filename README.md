@@ -1,8 +1,8 @@
 COGS: COnfiguration manaGement S
 ---
-`cogs` is a cli tool that allows generation of configuration files through different references sources.
+`cogs` is a cli tool that allows generation of configuration files by referencing multiple sources of truth.
 
-Sources of reference can include:
+Sources of truth can include:
 
 * local files
 * remote files (through [HTTP requests](examples/2.http.cog.toml))
@@ -25,7 +25,7 @@ go build -o $GOPATH/bin/ ./cmd/cogs
 `PL`atform can be Linux/Windows/Darwin:
 
 ```sh
-PL="Darwin" VR="0.9.1" \
+PL="Darwin" VR="0.10.0" \
   curl -SLk \
   "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
