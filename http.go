@@ -91,9 +91,11 @@ func parseHeader(v interface{}) (http.Header, error) {
 				header[cannonicalKey] = append(header[cannonicalKey], v)
 			}
 		}
+		return header, nil
 	default:
 		return nil, fmt.Errorf("%s: %T", errMsg, v)
 	}
+
 	for rawK, rawV := range rawHeader {
 		key := textproto.CanonicalMIMEHeaderKey(rawK)
 		switch vType := rawV.(type) {
