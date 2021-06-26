@@ -3,15 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"strings"
-
 	"github.com/Bestowinc/cogs"
 	"github.com/docopt/docopt-go"
 	"github.com/joho/godotenv"
 	"github.com/pelletier/go-toml"
+	"github.com/stoewer/go-strcase"
 	logging "gopkg.in/op/go-logging.v1"
 	"gopkg.in/yaml.v3"
+	"os"
+	"strings"
 )
 
 const cogsVersion = "0.9.1"
@@ -19,7 +19,7 @@ const usage string = `
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs gen <ctx> <cog-file> [options]
+  cogs gen <cog-file> <ctx>... [options]
 
 Options:
   -h --help        Show this screen.
@@ -40,7 +40,7 @@ Options:
 // Conf is used to bind CLI arguments and options
 type Conf struct {
 	Gen       bool
-	Ctx       string
+	Ctx       []string
 	File      string `docopt:"<cog-file>"`
 	Output    string `docopt:"--out"`
 	Keys      string
@@ -89,15 +89,27 @@ func run() error {
 	case conf.Gen:
 		var b []byte
 		var output string
+		var cfgs []*cogs.CfgMap
+		var cfgMap cogs.CfgMap
 
 		format, err := conf.validate()
 		if err != nil {
 			return err
 		}
 
-		cfgMap, err := cogs.Generate(conf.Ctx, conf.File, format, conf.filterLinks)
-		if err != nil {
-			return err
+		for _, ctx := range conf.Ctx {
+			cfg, err := cogs.Generate(ctx, conf.File, format, conf.filterLinks)
+			if err != nil {
+				return err
+			}
+			cfgs = append(cfgs, &cfg)
+		}
+		// Dotenv Join should be done once modFn changes key names so that
+		// keyValue and key_value can be marked as duplicates of KEY_VALUE
+		if format != cogs.Dotenv {
+			if cfgMap, err = cogs.Join(cfgs...); err != nil {
+				return err
+			}
 		}
 
 		switch format {
@@ -114,14 +126,20 @@ func run() error {
 			var modFn []func(string) string
 			// if --preserve was called, do not convert variable names to uppercase
 			if !conf.Preserve {
-				modFn = append(modFn, strings.ToUpper)
+				modFn = append(modFn, strcase.UpperSnakeCase)
 			}
 			// if --export was called, prepend "export " to key name
 			if conf.Export {
 				modFn = append(modFn, func(k string) string { return "export " + k })
 			}
-			// convert all key values to uppercase
-			output, err = godotenv.Marshal(modKeys(cfgMap, modFn...))
+			for _, cfg := range cfgs {
+				*cfg = modKeys(*cfg, modFn...)
+			}
+			if cfgMap, err = cogs.Join(cfgs...); err != nil {
+				return err
+			}
+
+			output, err = godotenv.Marshal(toStringMap(cfgMap))
 			output = output + "\n"
 		case cogs.Raw:
 			keyList := []string{}

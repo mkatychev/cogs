@@ -3,8 +3,10 @@ package cogs
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"net/textproto"
 	"net/url"
 
 	"github.com/pkg/errors"
@@ -75,23 +77,35 @@ func getHTTPFile(urlPath string, header http.Header, method, body string) ([]byt
 }
 
 func parseHeader(v interface{}) (http.Header, error) {
-	errMsg := "object must map to a string or array of strings"
-	rawHeader, ok := v.(map[string]interface{}) // handle single string value header
-	if !ok {
-		return nil, errors.New(errMsg)
-	}
+	var rawHeader map[string]interface{} // handle single string value header
 	header := make(http.Header)
-	for headerK, headerV := range rawHeader {
-		switch vType := headerV.(type) {
+	errMsg := "object must map to a string or array of strings"
+
+	switch t := v.(type) {
+	case map[string]interface{}:
+		rawHeader = t
+	case http.Header:
+		for k, vals := range t {
+			cannonicalKey := textproto.CanonicalMIMEHeaderKey(k)
+			for _, v := range vals {
+				header[cannonicalKey] = append(header[cannonicalKey], v)
+			}
+		}
+	default:
+		return nil, fmt.Errorf("%s: %T", errMsg, v)
+	}
+	for rawK, rawV := range rawHeader {
+		key := textproto.CanonicalMIMEHeaderKey(rawK)
+		switch vType := rawV.(type) {
 		case string:
-			header[headerK] = append(header[headerK], vType)
+			header[key] = append(header[key], vType)
 		case []interface{}: // go is unable to check for headerV.([]string) on initial cast
 			for _, el := range vType {
 				vStr, ok := el.(string)
 				if !ok {
 					return nil, errors.New(errMsg)
 				}
-				header[headerK] = append(header[headerK], vStr)
+				header[key] = append(header[key], vStr)
 			}
 		}
 	}

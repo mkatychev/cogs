@@ -25,6 +25,7 @@ require (
 	github.com/hashicorp/vault/api v1.1.0 // indirect
 	github.com/hashicorp/vault/sdk v0.2.0 // indirect
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c // indirect
+	github.com/iancoleman/strcase v0.1.3 // indirect
 	github.com/jinzhu/copier v0.3.0 // indirect
 	github.com/joho/godotenv v1.3.0
 	github.com/lib/pq v1.10.1 // indirect
@@ -37,6 +38,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/vektra/mockery v1.1.2 // indirect
 	go.mozilla.org/sops/v3 v3.7.1
 	go.uber.org/multierr v1.6.0

@@ -38,14 +38,26 @@ func getRawValue(cfgMap cogs.CfgMap, keyList []string, delimiter string) (string
 
 }
 
-// modKeys should always return a flat associative array of strings
-// coercing any interface{} value into a string
-func modKeys(cfgMap cogs.CfgMap, modFn ...func(string) string) map[string]string {
-	newCfgMap := make(map[string]string)
+// modKeys modifies the kyes of a given CfgMap with the provided string function(s)
+func modKeys(cfgMap cogs.CfgMap, modFn ...func(string) string) cogs.CfgMap {
+	newCfgMap := cogs.CfgMap{}
 	for k, v := range cfgMap {
 		for _, fn := range modFn {
 			k = fn(k)
 		}
+		// switch t := v.(type)  {
+		// case map[string]interface{}:
+		// }
+		newCfgMap[k] = fmt.Sprintf("%s", v)
+	}
+	return newCfgMap
+}
+
+// toStringMap should always return a flat associative array of strings
+// coercing any interface{} value into a string
+func toStringMap(cfgMap cogs.CfgMap) map[string]string {
+	newCfgMap := make(map[string]string)
+	for k, v := range cfgMap {
 		newCfgMap[k] = fmt.Sprintf("%s", v)
 	}
 	return newCfgMap

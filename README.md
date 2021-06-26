@@ -37,7 +37,7 @@ PL="Darwin" VR="0.9.1" \
 COGS COnfiguration manaGement S
 
 Usage:
-  cogs gen <ctx> <cog-file> [options]
+  cogs gen <cog-file> <ctx>... [options]
 
 Options:
   -h --help        Show this screen.
@@ -94,19 +94,19 @@ The example data (in `./examples`) are ordered by increasing complexity and shou
 then read the file to see how the underlying logic is used.
 
 1. basic example:
-   * `cogs gen basic 1.basic.cog.toml`
+   * `cogs gen 1.basic.cog.toml basic`
 1. HTTP examples:
-   * `cogs gen get 2.http.cog.toml`, GET example 
-   * `cogs gen post 2.http.cog.toml`, POST example:
+   * `cogs gen 2.http.cog.toml get`, GET example 
+   * `cogs gen 2.http.cog.toml post`, POST example:
 1. secret values and paths example:
    * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
-   * `cogs gen sops 3.secrets.cog.toml`
+   * `cogs gen 3.secrets.cog.toml sops`
 1. read types example:
-   * `cogs gen kustomize 4.read_types.cog.toml`
+   * `cogs gen 4.read_types.cog.toml kustomize`
 1. advanced patterns example:
-   * `cogs gen complex_json 5.advanced.cog.toml`
+   * `cogs gen 5.advanced.cog.toml complex_json `
 1. envsubst patterns example:
-   * `NVIM=nvim cogs gen envsubst 6.envsubst.cog.toml --envsubst`
+   * `NVIM=nvim cogs gen 6.envsubst.cog.toml envsubst --envsubst`
 
 ## `envsubst` cheatsheet:
 
