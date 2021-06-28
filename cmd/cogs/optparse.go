@@ -45,9 +45,6 @@ func modKeys(cfgMap cogs.CfgMap, modFn ...func(string) string) cogs.CfgMap {
 		for _, fn := range modFn {
 			k = fn(k)
 		}
-		// switch t := v.(type)  {
-		// case map[string]interface{}:
-		// }
 		newCfgMap[k] = fmt.Sprintf("%s", v)
 	}
 	return newCfgMap

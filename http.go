@@ -84,6 +84,9 @@ func parseHeader(v interface{}) (http.Header, error) {
 	switch t := v.(type) {
 	case map[string]interface{}:
 		rawHeader = t
+	// if we're pasing an existing http.Header, just covert key names
+	// to their canonical version
+	// ex: {"accept": "content/json"} -> {"Accept": "content/json"}
 	case http.Header:
 		for k, vals := range t {
 			cannonicalKey := textproto.CanonicalMIMEHeaderKey(k)
