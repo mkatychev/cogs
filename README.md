@@ -94,19 +94,19 @@ The example data (in `./examples`) are ordered by increasing complexity and shou
 then read the file to see how the underlying logic is used.
 
 1. basic example:
-   * `cogs gen 1.basic.cog.toml basic`
+   * `cogs gen examples/1.basic.cog.toml basic`
 1. HTTP examples:
-   * `cogs gen 2.http.cog.toml get`, GET example 
-   * `cogs gen 2.http.cog.toml post`, POST example:
+   * `cogs gen examples/2.http.cog.toml get`, GET example 
+   * `cogs gen examples/2.http.cog.toml post`, POST example:
 1. secret values and paths example:
-   * `gpg --import ./test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
-   * `cogs gen 3.secrets.cog.toml sops`
+   * `gpg --import test_files/sops_functional_tests_key.asc` should be run to import the test private key used for encrypted dummy data
+   * `cogs gen examples/3.secrets.cog.toml sops`
 1. read types example:
-   * `cogs gen 4.read_types.cog.toml kustomize`
+   * `cogs gen examples/4.read_types.cog.toml kustomize`
 1. advanced patterns example:
-   * `cogs gen 5.advanced.cog.toml complex_json `
+   * `cogs gen examples/5.advanced.cog.toml complex_json `
 1. envsubst patterns example:
-   * `NVIM=nvim cogs gen 6.envsubst.cog.toml envsubst --envsubst`
+   * `NVIM=nvim cogs gen examples/6.envsubst.cog.toml envsubst --envsubst`
 
 ## `envsubst` cheatsheet:
 

@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/Bestowinc/cogs"
 	"github.com/docopt/docopt-go"
 	"github.com/joho/godotenv"
@@ -10,8 +13,6 @@ import (
 	"github.com/stoewer/go-strcase"
 	logging "gopkg.in/op/go-logging.v1"
 	"gopkg.in/yaml.v3"
-	"os"
-	"strings"
 )
 
 const cogsVersion = "0.10.0"
