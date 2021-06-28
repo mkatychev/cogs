@@ -106,7 +106,7 @@ func run() error {
 			cfgs = append(cfgs, &cfg)
 		}
 		// Dotenv Join should be done once modFn changes key names so that
-		// keyValue and key_value can be marked as duplicates of KEY_VALUE
+		// keyName and key_name can be marked as duplicates of KEY_NAME
 		if format != cogs.Dotenv {
 			if cfgMap, err = cogs.Join(cfgs...); err != nil {
 				return err
