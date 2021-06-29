@@ -27,7 +27,7 @@ go build -o $GOPATH/bin/ ./cmd/cogs
 ```sh
 PL="Darwin" VR="0.10.0" \
   curl -SLk \
-  "github.com/Bestowinc/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
+  "github.com/mkatychev/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
 ```
 

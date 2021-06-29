@@ -1,4 +1,4 @@
-module github.com/Bestowinc/cogs
+module github.com/mkatychev/cogs
 
 go 1.16
 
