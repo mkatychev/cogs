@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Bestowinc/cogs"
 	"github.com/docopt/docopt-go"
 	"github.com/joho/godotenv"
+	"github.com/mkatychev/cogs"
 	"github.com/pelletier/go-toml"
 	"github.com/stoewer/go-strcase"
 	logging "gopkg.in/op/go-logging.v1"

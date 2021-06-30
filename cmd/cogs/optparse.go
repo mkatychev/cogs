@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Bestowinc/cogs"
+	"github.com/mkatychev/cogs"
 )
 
 // ----------------------
