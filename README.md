@@ -95,6 +95,7 @@ then read the file to see how the underlying logic is used.
 
 1. basic example:
    * `cogs gen examples/1.basic.cog.toml basic`
+   * `cogs gen examples/1.basic.cog.toml basic extra`, multi-ctx example
 1. HTTP examples:
    * `cogs gen examples/2.http.cog.toml get`, GET example 
    * `cogs gen examples/2.http.cog.toml post`, POST example:

@@ -85,6 +85,8 @@ type LinkMap map[string]*Link
 // CfgMap is meant to represent a map with values of one or more unknown types
 type CfgMap map[string]interface{}
 
+// Join merges any number of CfgMap elements into a single CfgMap,
+// elements with a duplicate key name return an error.
 func Join(cfgs ...*CfgMap) (CfgMap, error) {
 	c := CfgMap{}
 	for _, cfg := range cfgs {
