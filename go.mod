@@ -1,4 +1,4 @@
-module github.com/Bestowinc/cogs
+module github.com/mkatychev/cogs
 
 go 1.17
 
@@ -11,6 +11,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.2
 	github.com/pelletier/go-toml v1.9.4
 	github.com/pkg/errors v0.9.1
+	github.com/stoewer/go-strcase v1.2.0
 	go.mozilla.org/sops/v3 v3.7.1
 	go.uber.org/multierr v1.7.0
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473
