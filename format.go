@@ -133,6 +133,9 @@ func FormatForPath(path string) Format {
 
 // FormatLinkInput returns the correct format given the readType
 func FormatLinkInput(link *Link) (format Format) {
+	if link.header.Get("accept") == "application/json" {
+		return JSON
+	}
 	switch link.readType {
 	case rJSON, rJSONComplex:
 		format = JSON

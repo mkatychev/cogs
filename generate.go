@@ -85,6 +85,21 @@ type LinkMap map[string]*Link
 // CfgMap is meant to represent a map with values of one or more unknown types
 type CfgMap map[string]interface{}
 
+// Join merges any number of CfgMap elements into a single CfgMap,
+// elements with a duplicate key name return an error.
+func Join(cfgs ...*CfgMap) (CfgMap, error) {
+	c := CfgMap{}
+	for _, cfg := range cfgs {
+		for k, v := range *cfg {
+			if _, ok := c[k]; ok {
+				return nil, fmt.Errorf("Duplicate key found in two contexts: %s", k)
+			}
+			c[k] = v
+		}
+	}
+	return c, nil
+}
+
 // LinkFilter if a function meant to filter a LinkMap
 type LinkFilter func(LinkMap) (LinkMap, error)
 
