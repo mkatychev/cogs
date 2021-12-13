@@ -26,7 +26,7 @@ const (
 	// read format derived from filepath suffix
 	deferred ReadType = ""         // defer file config type to filename suffix
 	rWhole   ReadType = "whole"    // indicates to associate the entirety of a file to the given key name
-	rRaw     ReadType = "wholeRaw" // indicates to associate the entirety of a file to the given key name without serialization
+	rRaw     ReadType = "raw" // indicates to associate the entirety of a file to the given key name without serialization
 	rGear    ReadType = "gear"     // treat TOML table as a nested gear object
 )
 
@@ -106,13 +106,13 @@ const (
 	YAML   Format = "yaml"
 	TOML   Format = "toml"
 	Dotenv Format = "dotenv"
-	Values Format = "values" // omit keys
+	List   Format = "list" // omit keys
 )
 
 // Validate ensures that a string maps to a valid Format
 func (t Format) Validate() error {
 	switch t {
-	case JSON, YAML, TOML, Dotenv, Values:
+	case JSON, YAML, TOML, Dotenv, List:
 		return nil
 	default: // deferred readType should not be validated
 		return fmt.Errorf("%s is an invalid Format", string(t))
@@ -121,7 +121,7 @@ func (t Format) Validate() error {
 
 // FormatForPath returns the correct format given the path to a file
 func FormatForPath(path string) Format {
-	format := Values
+	format := List
 	switch {
 	case IsYAMLFile(path):
 		format = YAML

@@ -10,7 +10,7 @@ import (
 
 // OutputCfg returns the corresponding value for a given Link struct
 func OutputCfg(link *Link, outputType Format) (interface{}, error) {
-	if outputType == Dotenv || outputType == Values {
+	if outputType == Dotenv || outputType == List {
 		// don't try to marshal simple primitive types
 		if IsSimpleValue(link.Value) {
 			return SimpleValueToString(link.Value)
@@ -32,7 +32,7 @@ func marshalComplexValue(v interface{}, inputType Format) (output string, err er
 	case TOML:
 		b, err = toml.Marshal(v)
 		output = string(b)
-	case Dotenv, Values:
+	case Dotenv, List:
 		output = fmt.Sprintf("%s", v)
 	}
 	return output, err

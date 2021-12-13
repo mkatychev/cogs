@@ -101,11 +101,11 @@ func (c *Conf) validate() (format cogs.Format, err error) {
 		return "", nil
 	}
 	if format = cogs.Format(conf.Output); format.Validate() != nil {
-		return "", fmt.Errorf("invalid opt: --out" + conf.Output)
+		return "", fmt.Errorf("invalid opt: --out=" + conf.Output)
 	}
 
 	switch {
-	case format != cogs.Values:
+	case format != cogs.List:
 		if c.Delimiter != "" {
 			return "", fmt.Errorf("invalid opt: --sep")
 		}

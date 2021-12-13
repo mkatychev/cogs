@@ -49,11 +49,11 @@ Options:
   --keys=<key,>    Include specific keys, comma separated.
   --not=<key,>     Exclude specific keys, comma separated.
   --out=<type>     Configuration output type [default: json].
-                   <type>: json, toml, yaml, dotenv, values.
+                   <type>: json, toml, yaml, dotenv, list.
   
   --export, -x     If --out=dotenv: Prepends "export " to each line.
   --preserve, -p   If --out=dotenv: Preserves variable casing.
-  --sep=<sep>      If --out=values: Delimits values with a <sep>arator.
+  --sep=<sep>      If --out=list:   Delimits values with a <sep>arator.
 ```
 
 `cogs gen` - outputs a flat and serialized K:V array
