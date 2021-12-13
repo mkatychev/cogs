@@ -61,7 +61,7 @@ func toStringMap(cfgMap cogs.CfgMap) map[string]string {
 }
 
 // filterLinks retains only key names passed to --keys
-func (c *Conf) filterLinks(linkMap cogs.LinkMap) (cogs.LinkMap, error) {
+func (c *Conf) filterLinks(linkMap map[string]*cogs.Link) (map[string]*cogs.Link, error) {
 	if linkMap == nil {
 		return nil, nil
 	}
@@ -78,7 +78,7 @@ func (c *Conf) filterLinks(linkMap cogs.LinkMap) (cogs.LinkMap, error) {
 	}
 
 	keyList := strings.Split(c.Keys, ",")
-	newCfgMap := make(cogs.LinkMap)
+	newCfgMap := make(map[string]*cogs.Link)
 	for _, key := range keyList {
 		var ok bool
 		if newCfgMap[key], ok = linkMap[key]; !ok {
@@ -105,7 +105,7 @@ func (c *Conf) validate() (format cogs.Format, err error) {
 	}
 
 	switch {
-	case format != cogs.Raw:
+	case format != cogs.Values:
 		if c.Delimiter != "" {
 			return "", fmt.Errorf("invalid opt: --sep")
 		}

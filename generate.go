@@ -79,9 +79,6 @@ func (c Link) String() string {
 }`, c.KeyName, c.SearchName, c.Value, c.Path, c.SubPath, c.encrypted)
 }
 
-// LinkMap is used by Resolver to output the final k/v associative array
-type LinkMap map[string]*Link
-
 // CfgMap is meant to represent a map with values of one or more unknown types
 type CfgMap map[string]interface{}
 
@@ -92,7 +89,7 @@ func Join(cfgs ...*CfgMap) (CfgMap, error) {
 	for _, cfg := range cfgs {
 		for k, v := range *cfg {
 			if _, ok := c[k]; ok {
-				return nil, fmt.Errorf("Duplicate key found in two contexts: %s", k)
+				return nil, fmt.Errorf("duplicate key found in two contexts: %s", k)
 			}
 			c[k] = v
 		}
@@ -101,7 +98,7 @@ func Join(cfgs ...*CfgMap) (CfgMap, error) {
 }
 
 // LinkFilter if a function meant to filter a LinkMap
-type LinkFilter func(LinkMap) (LinkMap, error)
+type LinkFilter func(map[string]*Link) (map[string]*Link, error)
 
 // Resolver is meant to define an object that returns the final string map to be used in a configuration
 // resolving any paths and sub paths defined in the underling config map
@@ -116,14 +113,14 @@ type Resolver interface {
 // rather than a gear object. The term "switching gears" is an apt representation
 // of how one Cog manifest file can have many contexts/environments
 type Gear struct {
-	Name       string
-	linkMap    LinkMap
-	filePath   string     // filepath of file.cog.toml
-	fileValue  []byte     // byte representation of TOML file
-	tree       *toml.Tree // TOML object tree
-	outputType Format     // desired output type of the marshalled Gear
-	recursions uint       // the amount of recursions for the current Gear
-	filter     LinkFilter
+	Name            string
+	unresolvedLinks map[string]*Link
+	filePath        string     // filepath of file.cog.toml
+	fileValue       []byte     // byte representation of TOML file
+	tree            *toml.Tree // TOML object tree
+	outputType      Format     // desired output type of the marshalled Gear
+	recursions      uint       // the amount of recursions for the current Gear
+	filter          LinkFilter
 }
 
 // SetName sets the gear name to the provided string
@@ -136,10 +133,10 @@ func (g *Gear) SetName(name string) {
 func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 	var err error
 
-	if g.linkMap, err = parseCtx(ctx); err != nil {
+	if g.unresolvedLinks, err = parseCtx(ctx); err != nil {
 		return nil, err
 	}
-	if g.linkMap, err = g.filter(g.linkMap); err != nil {
+	if g.unresolvedLinks, err = g.filter(g.unresolvedLinks); err != nil {
 		return nil, err
 	}
 
@@ -158,7 +155,7 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 	pathGroups := make(map[distinctPath]*PathGroup)
 
 	// 1. sort Links by Path
-	for _, link := range g.linkMap {
+	for _, link := range g.unresolvedLinks {
 		if link.Path == "" {
 			continue
 		}
@@ -180,7 +177,7 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 					}
 				} else {
 					loadFile = func(path string) ([]byte, error) {
-						return getHTTPFile(path, header, method, body)
+						return requestHTTPFile(path, header, method, body)
 					}
 				}
 			case link.encrypted:
@@ -227,6 +224,11 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 
 		// 4. traverse every Path and possible SubPath retrieving the Link.Values associated with it
 		for _, link := range pGroup.links {
+			// no visitor is needed for a raw input
+			if link.readType == rRaw {
+				link.Value = string(fileBuf)
+				continue
+			}
 			if err := visitor.SetValue(link); err != nil {
 				return nil, errors.Wrap(err, link.KeyName)
 			}
@@ -234,8 +236,8 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 		}
 
 		// 5. add missing links to errs
-		if viErrs := visitor.Errors(); viErrs != nil {
-			errs = multierr.Append(errs, multierr.Combine(viErrs...))
+		if visitorErrs := visitor.Errors(); visitorErrs != nil {
+			errs = multierr.Append(errs, multierr.Combine(visitorErrs...))
 		}
 	}
 
@@ -246,7 +248,7 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 
 	// final output
 	cfgOut := make(CfgMap)
-	for key, link := range g.linkMap {
+	for key, link := range g.unresolvedLinks {
 		cfgOut[key], err = OutputCfg(link, g.outputType)
 		if err != nil {
 			return nil, err
@@ -340,7 +342,7 @@ func generate(ctxName string, tree *toml.Tree, gear Resolver) (CfgMap, error) {
 }
 
 // parseCtx traverses an map interface to populate a gear's configMap
-func parseCtx(ctx baseContext) (linkMap LinkMap, err error) {
+func parseCtx(ctx baseContext) (linkMap map[string]*Link, err error) {
 	linkMap = make(map[string]*Link)
 
 	// skip fetching encrypted vars if flag is toggled
@@ -394,7 +396,7 @@ type context struct {
 	Body     string      `mapstructure:",omitempty"`
 }
 
-func decodeVars(linkMap LinkMap, ctx context) error {
+func decodeVars(linkMap map[string]*Link, ctx context) error {
 	var err error
 	var baseLink Link // any readType or Path declarations to be inherited by Links
 
@@ -435,8 +437,8 @@ func decodeVars(linkMap LinkMap, ctx context) error {
 				KeyName: k,
 				Value:   v,
 			}
-		} else if cfgMap, ok := v.(map[string]interface{}); ok {
-			if linkMap[k], err = parseLinkMap(k, &baseLink, cfgMap); err != nil {
+		} else if rawLink, ok := v.(map[string]interface{}); ok {
+			if linkMap[k], err = parseLink(k, &baseLink, rawLink); err != nil {
 				return fmt.Errorf("%s: %w", k, err)
 			}
 		} else {
@@ -446,8 +448,8 @@ func decodeVars(linkMap LinkMap, ctx context) error {
 	return nil
 }
 
-// convenience function for passing ctx.enc variables to decodeEnv
-func decodeEncVars(linkMap LinkMap, ctx context) error {
+// decodeEncVars is a convenience function for passing ctx.enc variables to decodeEnv
+func decodeEncVars(linkMap map[string]*Link, ctx context) error {
 	err := decodeVars(linkMap, ctx)
 	if err != nil {
 		return fmt.Errorf("decodeEncVars: %w", err)
@@ -464,12 +466,12 @@ func decodeEncVars(linkMap LinkMap, ctx context) error {
 }
 
 // parseLink handles the cases when a config value maps to a non string object type
-func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) {
+func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (*Link, error) {
 	var link Link
 	var ok bool
 	var err error
 
-	for k, v := range cfgMap {
+	for k, v := range rawLink {
 		switch k {
 		case "name":
 			if link.SearchName, ok = v.(string); !ok {
@@ -531,18 +533,25 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 	if link.Path == "" {
 		return nil, fmt.Errorf("%s does not have a value assigned or %s.path defined", varName, varName)
 	}
+
 	// if readType was not specified:
-	if _, ok := cfgMap["type"]; !ok {
+	if _, ok := rawLink["type"]; !ok {
 		if baseLink != nil {
 			link.readType = baseLink.readType
 		} else {
 			link.readType = deferred
 		}
 	}
+
+	// if readType is raw and a SubPath exists
+	if link.readType == rRaw && link.SubPath != "" {
+		return nil, fmt.Errorf("%s subpath must not be defined for an input of raw", varName)
+	}
+
 	// if name is not defined: `var = "value"`
 	// then set link.Name to the key name, "var" in this case
 	link.KeyName = varName
-	if _, ok := cfgMap["name"]; !ok {
+	if _, ok := rawLink["name"]; !ok {
 		link.SearchName = varName
 		// if ctx.name was set then and var.name was not defined then inherit SearchName from baseLink
 		if baseLink.SearchName != "" {
@@ -554,13 +563,13 @@ func parseLinkMap(varName string, baseLink *Link, cfgMap CfgMap) (*Link, error) 
 	// implicit header and method inheritance
 	// if path is a URL & baseLink is non-nil
 	if link.remote && baseLink != nil {
-		if _, ok := cfgMap["header"]; !ok && baseLink.header != nil {
+		if _, ok := rawLink["header"]; !ok && baseLink.header != nil {
 			link.header = baseLink.header
 		}
-		if _, ok := cfgMap["method"]; !ok {
+		if _, ok := rawLink["method"]; !ok {
 			link.method = baseLink.method
 		}
-		if _, ok := cfgMap["body"]; !ok {
+		if _, ok := rawLink["body"]; !ok {
 			link.body = baseLink.body
 		}
 	}

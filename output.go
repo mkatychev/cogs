@@ -10,7 +10,7 @@ import (
 
 // OutputCfg returns the corresponding value for a given Link struct
 func OutputCfg(link *Link, outputType Format) (interface{}, error) {
-	if outputType == Dotenv || outputType == Raw {
+	if outputType == Dotenv || outputType == Values {
 		// don't try to marshal simple primitive types
 		if IsSimpleValue(link.Value) {
 			return SimpleValueToString(link.Value)
@@ -32,15 +32,15 @@ func marshalComplexValue(v interface{}, inputType Format) (output string, err er
 	case TOML:
 		b, err = toml.Marshal(v)
 		output = string(b)
-	case Dotenv, Raw:
+	case Dotenv, Values:
 		output = fmt.Sprintf("%s", v)
 	}
 	return output, err
 }
 
 // Exclude produces a laundered map with exclusionList values missing
-func Exclude(exclusionList []string, linkMap LinkMap) LinkMap {
-	newLinkMap := make(LinkMap)
+func Exclude(exclusionList []string, linkMap map[string]*Link) map[string]*Link {
+	newLinkMap := make(map[string]*Link)
 
 	for k := range linkMap {
 		if InList(k, exclusionList) {

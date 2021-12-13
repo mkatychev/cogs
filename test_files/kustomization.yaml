@@ -1,3 +1,4 @@
+# this is an example kustomize file
 configMapGenerator:
   - name: basic-environment
     literals:
