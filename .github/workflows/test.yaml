@@ -24,7 +24,7 @@ jobs:
   integration-test:
     strategy:
       matrix:
-        out: [json, toml, yaml, dotenv, raw]
+        out: [json, toml, yaml, dotenv, list]
     runs-on: ubuntu-latest
     steps:
     - name: Install Go
