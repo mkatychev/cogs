@@ -26,7 +26,7 @@ go build -o $GOPATH/bin/ ./cmd/cogs
 `PL`atform can be Linux/Windows/Darwin:
 
 ```sh
-PL="Darwin" VR="0.10.0" \
+PL="Darwin" VR="0.11.0" \
   curl -SLk \
   "github.com/mkatychev/cogs/releases/download/v${VR}/cogs_${VR}_${PL}_x86_64.tar.gz" | \
   tar xvz -C /usr/local/bin cogs
