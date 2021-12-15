@@ -1,8 +1,7 @@
 #### `0.11.0`:
-
-* Added raw input type for any context var: `var4 = {path = [[], ""], type = "raw"}`
-   - `wholeRaw` stores the entirety of a read file as a string value for the given context key
-   -  any subpaths provided when `var.type = "raw"` will return an error
+* Added raw input type for any context var: `var4 = {path = "./to/file.yaml", type = "raw"}`
+   - `raw` stores the entirety of a read file as a string value for the given context key
+   -  any subpaths provided when `type = "raw"` will return an error
 *  Renamed `--out=raw` to `--out=list` to better clarify the output type and distinguish it from the read type of  `raw`
 
 #### `0.10.0`:
