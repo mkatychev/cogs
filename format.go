@@ -23,9 +23,10 @@ const (
 	rJSONComplex ReadType = "json{}" // complex JSON key value pair: {"k":{"v1":[],"v2":[]}}
 	rYAMLComplex ReadType = "yaml{}" // complex YAML key value pair: {k: {v1: [], v2: []}}
 	rTOMLComplex ReadType = "toml{}" // complex TOML key value pair: k = {v1 = [], v2 = []}
-	// read format derived from filepath suffix
+
 	deferred ReadType = ""      // defer file config type to filename suffix
 	rWhole   ReadType = "whole" // indicates to associate the entirety of a file to the given key name
+	rRaw     ReadType = "raw"   // indicates to associate the entirety of a file to the given key name without serialization
 	rGear    ReadType = "gear"  // treat TOML table as a nested gear object
 )
 
@@ -34,10 +35,11 @@ func (t ReadType) Validate() error {
 	switch t {
 	case rDotenv, rJSON, rYAML, rTOML,
 		rJSONComplex, rYAMLComplex, rTOMLComplex, rWhole,
+		rRaw,
 		deferred:
 		return nil
 	default: // deferred readType should not be validated
-		return fmt.Errorf("%s is an invalid linkType", t.String())
+		return fmt.Errorf("%s is an invalid linkType", t)
 	}
 }
 
@@ -83,6 +85,8 @@ func (t ReadType) String() string {
 		return "complex toml"
 	case rWhole:
 		return "whole file"
+	case rRaw:
+		return "whole unserialized file"
 	case rGear:
 		return "gear object"
 	case deferred:
@@ -102,13 +106,13 @@ const (
 	YAML   Format = "yaml"
 	TOML   Format = "toml"
 	Dotenv Format = "dotenv"
-	Raw    Format = "raw"
+	List   Format = "list" // omit keys
 )
 
 // Validate ensures that a string maps to a valid Format
 func (t Format) Validate() error {
 	switch t {
-	case JSON, YAML, TOML, Dotenv, Raw:
+	case JSON, YAML, TOML, Dotenv, List:
 		return nil
 	default: // deferred readType should not be validated
 		return fmt.Errorf("%s is an invalid Format", string(t))
@@ -117,7 +121,7 @@ func (t Format) Validate() error {
 
 // FormatForPath returns the correct format given the path to a file
 func FormatForPath(path string) Format {
-	format := Raw
+	format := List
 	switch {
 	case IsYAMLFile(path):
 		format = YAML

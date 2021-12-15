@@ -17,6 +17,7 @@ Sources of truth can include:
 Clone this repo and `cd` into it.
 
 ```sh
+source <(go env)
 go build -o $GOPATH/bin/ ./cmd/cogs
 ```
 
@@ -43,16 +44,16 @@ Options:
   -h --help        Show this screen.
   --version        Show version.
   --no-enc, -n     Skips fetching encrypted vars.
-  --no-decrypt	   Skipts decrypting encrypted vars.
+  --no-decrypt	   Skips decrypting encrypted vars.
   --envsubst, -e   Perform environmental substitution on the given cog file.
   --keys=<key,>    Include specific keys, comma separated.
   --not=<key,>     Exclude specific keys, comma separated.
   --out=<type>     Configuration output type [default: json].
-                   <type>: json, toml, yaml, dotenv, raw.
-
+                   <type>: json, toml, yaml, dotenv, list.
+  
   --export, -x     If --out=dotenv: Prepends "export " to each line.
   --preserve, -p   If --out=dotenv: Preserves variable casing.
-  --sep=<sep>      If --out=raw:    Delimits values with a <sep>arator.
+  --sep=<sep>      If --out=list:   Delimits values with a <sep>arator.
 ```
 
 `cogs gen` - outputs a flat and serialized K:V array

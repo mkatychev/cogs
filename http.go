@@ -28,7 +28,7 @@ func isValidURL(path string) bool {
 	return true
 }
 
-func getHTTPFile(urlPath string, header http.Header, method, body string) ([]byte, error) {
+func requestHTTPFile(urlPath string, header http.Header, method, body string) ([]byte, error) {
 	var buf bytes.Buffer
 
 	if method == "" {
@@ -41,7 +41,10 @@ func getHTTPFile(urlPath string, header http.Header, method, body string) ([]byt
 		if err := json.Unmarshal([]byte(body), &i); err != nil {
 			return nil, errors.Wrap(err, "getHTTPFile")
 		}
-		json.NewEncoder(payload).Encode(i)
+
+		if err := json.NewEncoder(payload).Encode(i); err != nil {
+			return nil, errors.WithStack(err)
+		}
 	}
 
 	request, err := http.NewRequest(method, urlPath, payload)
@@ -90,9 +93,7 @@ func parseHeader(v interface{}) (http.Header, error) {
 	case http.Header:
 		for k, vals := range t {
 			cannonicalKey := textproto.CanonicalMIMEHeaderKey(k)
-			for _, v := range vals {
-				header[cannonicalKey] = append(header[cannonicalKey], v)
-			}
+			header[cannonicalKey] = append(header[cannonicalKey], vals...)
 		}
 		return header, nil
 	default:

@@ -134,7 +134,7 @@ enc_var.path = ["./path.enc", ".subpath"]
 
 type testGear struct {
 	Name    string
-	linkMap LinkMap
+	linkMap map[string]*Link
 }
 
 // SetName sets the gear name to the provided string

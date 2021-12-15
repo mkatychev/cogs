@@ -17,3 +17,4 @@ type = "dotenv"
 var1 = {path = [], name = "VAR_1"}
 var2 = {path = [], name = "VAR_2"}
 var3 = {path = [[], ".jsonMap"], type = "json"}
+var4 = {path = [[], ""], type = "raw"}
