@@ -23,11 +23,11 @@ const (
 	rJSONComplex ReadType = "json{}" // complex JSON key value pair: {"k":{"v1":[],"v2":[]}}
 	rYAMLComplex ReadType = "yaml{}" // complex YAML key value pair: {k: {v1: [], v2: []}}
 	rTOMLComplex ReadType = "toml{}" // complex TOML key value pair: k = {v1 = [], v2 = []}
-	// read format derived from filepath suffix
-	deferred ReadType = ""         // defer file config type to filename suffix
-	rWhole   ReadType = "whole"    // indicates to associate the entirety of a file to the given key name
-	rRaw     ReadType = "raw" // indicates to associate the entirety of a file to the given key name without serialization
-	rGear    ReadType = "gear"     // treat TOML table as a nested gear object
+
+	deferred ReadType = ""      // defer file config type to filename suffix
+	rWhole   ReadType = "whole" // indicates to associate the entirety of a file to the given key name
+	rRaw     ReadType = "raw"   // indicates to associate the entirety of a file to the given key name without serialization
+	rGear    ReadType = "gear"  // treat TOML table as a nested gear object
 )
 
 // Validate ensures that a string is a valid readType enum

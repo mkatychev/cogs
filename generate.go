@@ -113,14 +113,14 @@ type Resolver interface {
 // rather than a gear object. The term "switching gears" is an apt representation
 // of how one Cog manifest file can have many contexts/environments
 type Gear struct {
-	Name            string
-	unresolvedLinks map[string]*Link
-	filePath        string     // filepath of file.cog.toml
-	fileValue       []byte     // byte representation of TOML file
-	tree            *toml.Tree // TOML object tree
-	outputType      Format     // desired output type of the marshalled Gear
-	recursions      uint       // the amount of recursions for the current Gear
-	filter          LinkFilter
+	Name       string
+	linkMap    map[string]*Link // unresolved links: map["var_name"]*Link{Value: nil}
+	filePath   string           // filepath of file.cog.toml
+	fileValue  []byte           // byte representation of TOML file
+	tree       *toml.Tree       // TOML object tree
+	outputType Format           // desired output type of the marshalled Gear
+	recursions uint             // the amount of recursions for the current Gear
+	filter     LinkFilter
 }
 
 // SetName sets the gear name to the provided string
@@ -133,10 +133,10 @@ func (g *Gear) SetName(name string) {
 func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 	var err error
 
-	if g.unresolvedLinks, err = parseCtx(ctx); err != nil {
+	if g.linkMap, err = parseCtx(ctx); err != nil {
 		return nil, err
 	}
-	if g.unresolvedLinks, err = g.filter(g.unresolvedLinks); err != nil {
+	if g.linkMap, err = g.filter(g.linkMap); err != nil {
 		return nil, err
 	}
 
@@ -155,7 +155,7 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 	pathGroups := make(map[distinctPath]*PathGroup)
 
 	// 1. sort Links by Path
-	for _, link := range g.unresolvedLinks {
+	for _, link := range g.linkMap {
 		if link.Path == "" {
 			continue
 		}
@@ -248,7 +248,7 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 
 	// final output
 	cfgOut := make(CfgMap)
-	for key, link := range g.unresolvedLinks {
+	for key, link := range g.linkMap {
 		cfgOut[key], err = OutputCfg(link, g.outputType)
 		if err != nil {
 			return nil, err
