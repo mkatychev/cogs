@@ -36,6 +36,7 @@ func (t ReadType) Validate() error {
 	case rDotenv, rJSON, rYAML, rTOML,
 		rJSONComplex, rYAMLComplex, rTOMLComplex, rWhole,
 		rRaw,
+		rGear,
 		deferred:
 		return nil
 	default: // deferred readType should not be validated

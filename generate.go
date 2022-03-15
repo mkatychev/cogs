@@ -3,13 +3,10 @@ package cogs
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"path"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pelletier/go-toml"
 	"github.com/pkg/errors"
-	"go.uber.org/multierr"
 )
 
 // NoEnc decides whether to handle encrypted variables
@@ -47,6 +44,20 @@ type Link struct {
 	body       string      // HTTP request body
 	keys       []string    // key filter for Gear read types
 	readType   ReadType
+}
+
+// GearFilter is used to filter link maps when read type is gear
+func (c *Link) GearFilter(linkMap map[string]*Link) (map[string]*Link, error) {
+	// TODO handle keys properly
+	if c.keys == nil || len(c.keys) == 0 {
+		return linkMap, nil
+	}
+	for k, _ := range linkMap {
+		if !InList(k, c.keys) {
+			delete(linkMap, k)
+		}
+	}
+	return linkMap, nil
 }
 
 // distinctPath returns the Link properties needed to differentiate Links with identical paths
@@ -105,174 +116,11 @@ type LinkFilter func(map[string]*Link) (map[string]*Link, error)
 type Resolver interface {
 	ResolveMap(baseContext) (CfgMap, error)
 	SetName(string)
-}
-
-// Gear represents one of the contexts in a cog manifest.
-// The term "gear" is used to refer to the operating state of a machine (similar
-// to how a microservice can operate locally or in a remote environment)
-// rather than a gear object. The term "switching gears" is an apt representation
-// of how one Cog manifest file can have many contexts/environments
-type Gear struct {
-	Name       string
-	linkMap    map[string]*Link // unresolved links: map["var_name"]*Link{Value: nil}
-	filePath   string           // filepath of file.cog.toml
-	fileValue  []byte           // byte representation of TOML file
-	tree       *toml.Tree       // TOML object tree
-	outputType Format           // desired output type of the marshalled Gear
-	recursions uint             // the amount of recursions for the current Gear
-	filter     LinkFilter
-}
-
-// SetName sets the gear name to the provided string
-func (g *Gear) SetName(name string) {
-	g.Name = name
-}
-
-// ResolveMap outputs the flat associative string, resolving potential filepath pointers
-// held by Link objects by calling the .SetValue() method
-func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
-	var err error
-
-	if g.linkMap, err = parseCtx(ctx); err != nil {
-		return nil, err
-	}
-	if g.linkMap, err = g.filter(g.linkMap); err != nil {
-		return nil, err
-	}
-
-	// includes Link objects with a direct file and an empty SubPath:
-	// ex: var.path = "./path"
-	// ---
-	// as well as Link objects with SubPaths present:
-	// ex: var.path = ["./path", ".subpath"]
-	// ---
-
-	type PathGroup struct {
-		loadFile func(filePath string) ([]byte, error)
-		links    []*Link
-	}
-
-	pathGroups := make(map[distinctPath]*PathGroup)
-
-	// 1. sort Links by Path
-	for _, link := range g.linkMap {
-		if link.Path == "" {
-			continue
-		}
-
-		if _, ok := pathGroups[link.distinctPath()]; !ok {
-			// read plaintext file into bytes
-			loadFile := readFile
-			switch {
-			case link.remote:
-				// must explicitly define variables
-				// or previous link values will bleed into loadFile func
-				header := link.header
-				method := link.method
-				body := link.body
-
-				if link.encrypted {
-					loadFile = func(path string) ([]byte, error) {
-						return decryptHTTPFile(path, header, method, body)
-					}
-				} else {
-					loadFile = func(path string) ([]byte, error) {
-						return requestHTTPFile(path, header, method, body)
-					}
-				}
-			case link.encrypted:
-				loadFile = decryptFile
-			}
-			pathGroups[link.distinctPath()] = &PathGroup{loadFile: loadFile, links: []*Link{}}
-		}
-		pathGroups[link.distinctPath()].links = append(pathGroups[link.distinctPath()].links, link)
-	}
-
-	var errs error
-	for p, pGroup := range pathGroups {
-		var fileBuf []byte
-		// 2. for each distinct Path: generate a Reader object
-		linkFilePath := g.getLinkFilePath(p.path)
-		// if link.Path references the cog file, return the already read (and envsubst applied) value
-		if p.path == selfPath {
-			fileBuf = g.fileValue
-		} else if fileBuf, err = pGroup.loadFile(linkFilePath); err != nil {
-			if os.IsNotExist(err) {
-				errs = multierr.Append(errs, err)
-				continue
-			}
-			return nil, err
-		}
-
-		newVisitor := NewYAMLVisitor
-		// 3. create visitor to handle SubPath strings
-		// all read files should resolve to a yaml.Node, this includes JSON, TOML, and dotenv
-		switch FormatForPath(linkFilePath) {
-		case JSON:
-			newVisitor = NewJSONVisitor
-		case YAML:
-			newVisitor = NewYAMLVisitor
-		case TOML:
-			newVisitor = NewTOMLVisitor
-		case Dotenv:
-			newVisitor = NewDotenvVisitor
-		}
-		visitor, err := newVisitor(fileBuf)
-		if err != nil {
-			return nil, err
-		}
-
-		// 4. traverse every Path and possible SubPath retrieving the Link.Values associated with it
-		for _, link := range pGroup.links {
-			// no visitor is needed for a raw input
-			if link.readType == rRaw {
-				link.Value = string(fileBuf)
-				continue
-			}
-			if err := visitor.SetValue(link); err != nil {
-				return nil, errors.Wrap(err, link.KeyName)
-			}
-
-		}
-
-		// 5. add missing links to errs
-		if visitorErrs := visitor.Errors(); visitorErrs != nil {
-			errs = multierr.Append(errs, multierr.Combine(visitorErrs...))
-		}
-	}
-
-	// The returned error formats into a readable multi-line error message if formatted with %+v.
-	if errs != nil {
-		return nil, fmt.Errorf("%+v", errs)
-	}
-
-	// final output
-	cfgOut := make(CfgMap)
-	for key, link := range g.linkMap {
-		cfgOut[key], err = OutputCfg(link, g.outputType)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return cfgOut, nil
-
-}
-
-func (g *Gear) getLinkFilePath(linkPath string) string {
-	if linkPath == selfPath {
-		return g.filePath
-	}
-	if path.IsAbs(linkPath) || isValidURL(linkPath) {
-		return linkPath
-	}
-	dir := path.Dir(g.filePath)
-	return path.Join(dir, linkPath)
+	GetTree() *toml.Tree
 }
 
 // Generate is a top level command that takes an context name argument and cog file path to return a string map
 func Generate(ctxName, cogPath string, outputType Format, filter LinkFilter) (CfgMap, error) {
-	var tree *toml.Tree
 	var err error
 
 	if err = outputType.Validate(); err != nil {
@@ -284,37 +132,29 @@ func Generate(ctxName, cogPath string, outputType Format, filter LinkFilter) (Cf
 		return nil, err
 	}
 
-	if EnvSubst {
-		if b, err = envSubBytes(b); err != nil {
-			return nil, err
-		}
-	}
-	if tree, err = toml.LoadBytes(b); err != nil {
+	gear, err := InitGear(b, EnvSubst)
+	if err != nil {
 		return nil, err
 	}
-	gear := &Gear{
-		filePath:   cogPath,
-		fileValue:  b,
-		tree:       tree,
-		outputType: outputType,
-		recursions: 0,
-		filter:     filter,
+
+	gear.filePath = cogPath
+	gear.outputType = outputType
+	gear.recursions = 0
+	gear.filter = filter
+	cfgMap, err := generate(ctxName, gear)
+	if err != nil {
+		return nil, err
 	}
-	return generate(ctxName, tree, gear)
+
+	return cfgMap, nil
 
 }
 
-func generate(ctxName string, tree *toml.Tree, gear Resolver) (CfgMap, error) {
+func generate(ctxName string, gear Resolver) (CfgMap, error) {
 	var err error
 	var ctx baseContext
 
-	name, ok := tree.Get("name").(string)
-	if !ok {
-		return nil, fmt.Errorf("manifest.name string value must be present as a non-empty string")
-	}
-	gear.SetName(name)
-
-	ctxTree, ok := tree.Get(ctxName).(*toml.Tree)
+	table, ok := gear.GetTree().Get(ctxName).(*toml.Tree)
 	if !ok {
 		// TODO  ErrMissingContext = errorW{fmt:"%s: %s context missing from cog file"}
 		errMsg := fmt.Sprintf("%s context missing from cog file", ctxName)
@@ -323,16 +163,16 @@ func generate(ctxName string, tree *toml.Tree, gear Resolver) (CfgMap, error) {
 		}
 		return nil, errors.New(errMsg)
 	}
+	gear.SetName(ctxName)
 
-	var ctxMap map[string]interface{}
-	if err := ctxTree.Unmarshal(&ctxMap); err != nil {
+	var tableMap map[string]interface{}
+	if err := table.Unmarshal(&tableMap); err != nil {
 		return nil, err
 	}
 
-	if err = mapstructure.Decode(ctxMap, &ctx); err != nil {
+	if err = mapstructure.Decode(tableMap, &ctx); err != nil {
 		return nil, fmt.Errorf("generate context: %w", err)
 	}
-
 	genOut, err := gear.ResolveMap(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ctxName, err)
@@ -492,21 +332,21 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 				return nil, fmt.Errorf("%s.type: %w", varName, err)
 			}
 		case "gear_keys":
-			keysErr := fmt.Errorf("%s.keys must be a string or array of strings", varName)
-			link.keys = []string{}
-			slice, ok := v.([]interface{})
-			if !ok {
-				return nil, keysErr
-			}
-			for _, v := range slice {
-				str, ok := v.(string)
-				if !ok {
-					return nil, keysErr
-				}
-				link.keys = append(link.keys, str)
+			panic("unimplemented")
+			// keysErr := fmt.Errorf("%s.keys must be a string or array of strings", varName)
+			// link.keys = []string{}
+			// slice, ok := v.([]interface{})
+			// if !ok {
+			//     return nil, keysErr
+			// }
+			// for _, v := range slice {
+			//     str, ok := v.(string)
+			//     if !ok {
+			//         return nil, keysErr
+			//     }
+			//     link.keys = append(link.keys, str)
 
-			}
-			panic("rGear unsupported at this time")
+			// }
 		case "header": // "net/http".Header is of type Header map[string][]string
 			if link.header, err = parseHeader(v); err != nil {
 				return nil, errors.Wrapf(err, "%s.header", varName)
@@ -557,6 +397,11 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 		if baseLink.SearchName != "" {
 			link.SearchName = baseLink.SearchName
 		}
+	}
+
+	// TODO handle gear keys cleanly
+	if link.readType == rGear {
+		link.keys = []string{link.SearchName}
 	}
 
 	link.remote = isValidURL(link.Path)
