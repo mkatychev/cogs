@@ -1,5 +1,8 @@
 name = "recursion_example"
 
+[env]
+HOP = "first_hop"
+
 [first_hop.vars]
 var.path = [".", ".second_hop.vars"]
 
@@ -7,7 +10,7 @@ var.path = [".", ".second_hop.vars"]
 var = "second_hop_value"
 
 [recursive.vars]
-var.path = [".", "first_hop"]
+var.path = [".", "${HOP}"]
 var.type = "gear"
 
 [recursive2.vars]
