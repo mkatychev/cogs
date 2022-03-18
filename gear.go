@@ -26,7 +26,7 @@ type Gear struct {
 	filter     LinkFilter
 }
 
-func InitGear(b []byte, envSubst bool) (*Gear, error) {
+func initGear(b []byte, envSubst bool) (*Gear, error) {
 	var tree *toml.Tree
 	var err error
 	gear := &Gear{}
@@ -146,10 +146,6 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 		pathGroups[link.distinctPath()].links = append(pathGroups[link.distinctPath()].links, link)
 	}
 
-	// if g.Name == "register-mgmt.internal_ports" {
-	// fmt.Println(pathGroups)
-	// }
-
 	var errs error
 	for p, pGroup := range pathGroups {
 		var fileBuf []byte
@@ -195,7 +191,7 @@ func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
 				// already been applied
 				if gearVar == nil {
 					envSubst := EnvSubst && p.path != selfPath
-					gearVar, err = InitGear(fileBuf, envSubst)
+					gearVar, err = initGear(fileBuf, envSubst)
 					if err != nil {
 						return nil, errors.Wrap(err, link.KeyName)
 					}
@@ -265,6 +261,7 @@ func (g *Gear) getLinkFilePath(linkPath string) string {
 	return path.Join(dir, linkPath)
 }
 
+// GetTree returns the toml.Tree private property
 func (g *Gear) GetTree() *toml.Tree {
 	return g.tree
 }

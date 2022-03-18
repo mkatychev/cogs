@@ -38,9 +38,17 @@ func marshalComplexValue(v interface{}, inputType Format) (output string, err er
 	return output, err
 }
 
+func Keys[K comparable, V any](m map[K]V) []K {
+	var keys []K
+	for k, _ := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // Exclude produces a laundered map with exclusionList values missing
-func Exclude(exclusionList []string, linkMap map[string]*Link) map[string]*Link {
-	newLinkMap := make(map[string]*Link)
+func Exclude[K comparable, V any](exclusionList []K, linkMap map[K]V) map[K]V {
+	newLinkMap := make(map[K]V)
 
 	for k := range linkMap {
 		if InList(k, exclusionList) {
@@ -52,7 +60,7 @@ func Exclude(exclusionList []string, linkMap map[string]*Link) map[string]*Link 
 }
 
 // InList verifies that a given string is in a string slice
-func InList(s string, ss []string) bool {
+func InList[T comparable](s T, ss []T) bool {
 	for _, v := range ss {
 		if v == s {
 			return true

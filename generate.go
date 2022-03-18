@@ -42,22 +42,41 @@ type Link struct {
 	header     http.Header // HTTP request headers
 	method     string      // HTTP request method
 	body       string      // HTTP request body
-	keys       []string    // key filter for Gear read types
+	aliases    []string    // additional key names that map to the same value
 	readType   ReadType
+	// keys       []string    // key filter for Gear read types
 }
 
 // GearFilter is used to filter link maps when read type is gear
 func (c *Link) GearFilter(linkMap map[string]*Link) (map[string]*Link, error) {
-	// TODO handle keys properly
-	if c.keys == nil || len(c.keys) == 0 {
-		return linkMap, nil
+	var ok bool
+	filteredMap := make(map[string]*Link)
+
+	if filteredMap[c.SearchName], ok = linkMap[c.SearchName]; !ok {
+		return nil, errors.Errorf("Link.name: %q is not present in the provided gear map", c.SearchName)
 	}
-	for k, _ := range linkMap {
-		if !InList(k, c.keys) {
-			delete(linkMap, k)
-		}
-	}
+	// if keys == nil || len(keys) == 0 {
+	//     return linkMap, nil
+	// }
+	// for k, _ := range linkMap {
+	//     if !InList(k, keys) {
+	//         delete(linkMap, k)
+	//     }
+	// }
 	return linkMap, nil
+}
+
+// ensure Link.aliases strings do not exist as preexisting key entries
+func (c *Link) validateAliases(linkMap map[string]*Link) error {
+	for i, alias := range c.aliases {
+		if _, ok := linkMap[alias]; ok {
+			return fmt.Errorf("%s.aliases[%d]: key %q already present in ctx", c.KeyName, i, alias)
+		}
+		aliasLink := *c
+		aliasLink.KeyName = alias
+		linkMap[alias] = &aliasLink
+	}
+	return nil
 }
 
 // distinctPath returns the Link properties needed to differentiate Links with identical paths
@@ -100,7 +119,7 @@ func Join(cfgs ...*CfgMap) (CfgMap, error) {
 	for _, cfg := range cfgs {
 		for k, v := range *cfg {
 			if _, ok := c[k]; ok {
-				return nil, fmt.Errorf("duplicate key found in two contexts: %s", k)
+				return nil, fmt.Errorf("duplicate key found in two contexts: %q", k)
 			}
 			c[k] = v
 		}
@@ -132,7 +151,7 @@ func Generate(ctxName, cogPath string, outputType Format, filter LinkFilter) (Cf
 		return nil, err
 	}
 
-	gear, err := InitGear(b, EnvSubst)
+	gear, err := initGear(b, EnvSubst)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +176,7 @@ func generate(ctxName string, gear Resolver) (CfgMap, error) {
 	table, ok := gear.GetTree().Get(ctxName).(*toml.Tree)
 	if !ok {
 		// TODO  ErrMissingContext = errorW{fmt:"%s: %s context missing from cog file"}
-		errMsg := fmt.Sprintf("%s context missing from cog file", ctxName)
+		errMsg := fmt.Sprintf("%q context missing from cog file", ctxName)
 		if g, ok := gear.(*Gear); ok {
 			errMsg = g.filePath + ": " + errMsg
 		}
@@ -173,6 +192,7 @@ func generate(ctxName string, gear Resolver) (CfgMap, error) {
 	if err = mapstructure.Decode(tableMap, &ctx); err != nil {
 		return nil, fmt.Errorf("generate context: %w", err)
 	}
+	ctx.Name = ctxName
 	genOut, err := gear.ResolveMap(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ctxName, err)
@@ -186,10 +206,10 @@ func parseCtx(ctx baseContext) (linkMap map[string]*Link, err error) {
 	linkMap = make(map[string]*Link)
 
 	// skip fetching encrypted vars if flag is toggled
-	if !NoEnc {
+	if !NoEnc && ctx.Enc.Vars != nil {
 		err = decodeEncVars(linkMap, ctx.Enc)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, ctx.Name)
 		}
 	}
 
@@ -202,38 +222,44 @@ func parseCtx(ctx baseContext) (linkMap map[string]*Link, err error) {
 
 // baseContext is the struct that maps to the TOML table's ctx name
 type baseContext struct {
-	Path     interface{} `mapstructure:",omitempty"`
-	ReadType string      `mapstructure:"type,omitempty"`
-	Name     string      `mapstructure:",omitempty"`
-	Vars     CfgMap      `mapstructure:",omitempty"`
-	Enc      context     `mapstructure:",omitempty"`
-	Header   interface{} `mapstructure:",omitempty"`
-	Method   string      `mapstructure:",omitempty"`
-	Body     string      `mapstructure:",omitempty"`
+	Name string
+
+	// config maps
+	Vars CfgMap  `mapstructure:",omitempty"`
+	Enc  context `mapstructure:",omitempty"`
+	// inheritable
+	SearchName string      `mapstructure:"name,omitempty"`
+	Path       interface{} `mapstructure:",omitempty"`
+	ReadType   string      `mapstructure:"type,omitempty"`
+	Header     interface{} `mapstructure:",omitempty"`
+	Method     string      `mapstructure:",omitempty"`
+	Body       string      `mapstructure:",omitempty"`
 }
 
 // toContext returns the unencrypted context properties ignoring baseContext.Enc
 func (b baseContext) toContext() context {
 	return context{
-		Path:     b.Path,
-		ReadType: b.ReadType,
-		Name:     b.Name,
-		Vars:     b.Vars,
-		Header:   b.Header,
-		Method:   b.Method,
-		Body:     b.Body,
+		Name:       b.Name,
+		Path:       b.Path,
+		ReadType:   b.ReadType,
+		SearchName: b.SearchName,
+		Vars:       b.Vars,
+		Header:     b.Header,
+		Method:     b.Method,
+		Body:       b.Body,
 	}
 }
 
 // context is a struct meant to represent both encrypted and plaintext sections of a baseContext
 type context struct {
-	Path     interface{} `mapstructure:",omitempty"`
-	ReadType string      `mapstructure:"type,omitempty"`
-	Name     string      `mapstructure:",omitempty"`
-	Vars     CfgMap      `mapstructure:",omitempty"`
-	Header   interface{} `mapstructure:",omitempty"`
-	Method   string      `mapstructure:",omitempty"`
-	Body     string      `mapstructure:",omitempty"`
+	Name       string
+	Path       interface{} `mapstructure:",omitempty"`
+	ReadType   string      `mapstructure:"type,omitempty"`
+	SearchName string      `mapstructure:"name,omitempty"`
+	Vars       CfgMap      `mapstructure:",omitempty"`
+	Header     interface{} `mapstructure:",omitempty"`
+	Method     string      `mapstructure:",omitempty"`
+	Body       string      `mapstructure:",omitempty"`
 }
 
 func decodeVars(linkMap map[string]*Link, ctx context) error {
@@ -250,7 +276,7 @@ func decodeVars(linkMap map[string]*Link, ctx context) error {
 	// baseContext globals
 	// -------------------
 	// name
-	baseLink.SearchName = ctx.Name
+	baseLink.SearchName = ctx.SearchName
 	// type
 	baseLink.readType = ReadType(ctx.ReadType)
 	if err := baseLink.readType.Validate(); err != nil {
@@ -259,7 +285,7 @@ func decodeVars(linkMap map[string]*Link, ctx context) error {
 	// HTTP header
 	if ctx.Header != nil {
 		if baseLink.header, err = parseHeader(ctx.Header); err != nil {
-			return errors.Wrap(err, ctx.Name)
+			return err
 		}
 	}
 	// HTTP method
@@ -283,6 +309,15 @@ func decodeVars(linkMap map[string]*Link, ctx context) error {
 			}
 		} else {
 			return fmt.Errorf("%s: %T is an unsupported type", k, v)
+		}
+	}
+
+	// invalid/duplicate alias name should always propagate from the Link.alias field
+	// rather thank from a `_, ok := linkMap[k]` check so that the alias index can
+	// be provided in the error message
+	for _, k := range Keys(linkMap) {
+		if err = linkMap[k].validateAliases(linkMap); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -331,22 +366,19 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 			if err := link.readType.Validate(); err != nil {
 				return nil, fmt.Errorf("%s.type: %w", varName, err)
 			}
-		case "gear_keys":
-			panic("unimplemented")
-			// keysErr := fmt.Errorf("%s.keys must be a string or array of strings", varName)
-			// link.keys = []string{}
-			// slice, ok := v.([]interface{})
-			// if !ok {
-			//     return nil, keysErr
-			// }
-			// for _, v := range slice {
-			//     str, ok := v.(string)
-			//     if !ok {
-			//         return nil, keysErr
-			//     }
-			//     link.keys = append(link.keys, str)
-
-			// }
+		case "aliases":
+			aliasErr := fmt.Errorf("%s.aliases must be an array of strings", varName)
+			slice, ok := v.([]interface{})
+			if !ok {
+				return nil, aliasErr
+			}
+			for _, v := range slice {
+				str, ok := v.(string)
+				if !ok {
+					return nil, aliasErr
+				}
+				link.aliases = append(link.aliases, str)
+			}
 		case "header": // "net/http".Header is of type Header map[string][]string
 			if link.header, err = parseHeader(v); err != nil {
 				return nil, errors.Wrapf(err, "%s.header", varName)
@@ -397,11 +429,6 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 		if baseLink.SearchName != "" {
 			link.SearchName = baseLink.SearchName
 		}
-	}
-
-	// TODO handle gear keys cleanly
-	if link.readType == rGear {
-		link.keys = []string{link.SearchName}
 	}
 
 	link.remote = isValidURL(link.Path)
