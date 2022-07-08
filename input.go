@@ -199,6 +199,11 @@ func (vi *visitor) getLink(link *Link, searchMap map[string]interface{}) (interf
 	if value, ok := searchMap[link.SearchName]; ok {
 		return value, ok
 	}
+
+	// check for existence of default value
+	if link.Value != nil {
+		return link.Value, true
+	}
 	// link is unable to be found in the searchMap at this point
 	subPath := "."
 	if link.SubPath != "" {

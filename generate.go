@@ -35,15 +35,16 @@ type Link struct {
 	KeyName    string      // the key name defined in the context file
 	SearchName string      // same as keyName unless redefined using the `name` key: var.name="other_name"
 	Value      interface{} // Holds a complex or simple value for the given Link
-	Path       string      // filepath string where Link can be resolved
-	SubPath    string      // object traversal string used to resolve Link if not at top level of document (yq syntax)
-	encrypted  bool        // indicates if decryption is needed to resolve Link.Value
-	remote     bool        // indicates if an HTTP request is needed to return the given document
-	header     http.Header // HTTP request headers
-	method     string      // HTTP request method
-	body       string      // HTTP request body
-	aliases    []string    // additional key names that map to the same value
-	readType   ReadType
+	// defaultValue interface{} // default value if key is missing
+	Path      string      // filepath string where Link can be resolved
+	SubPath   string      // object traversal string used to resolve Link if not at top level of document (yq syntax)
+	encrypted bool        // indicates if decryption is needed to resolve Link.Value
+	remote    bool        // indicates if an HTTP request is needed to return the given document
+	header    http.Header // HTTP request headers
+	method    string      // HTTP request method
+	body      string      // HTTP request body
+	aliases   []string    // additional key names that map to the same value
+	readType  ReadType
 	// keys       []string    // key filter for Gear read types
 }
 
