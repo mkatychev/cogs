@@ -348,6 +348,8 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 
 	for k, v := range rawLink {
 		switch k {
+		case "value":
+			link.Value = v
 		case "name":
 			if link.SearchName, ok = v.(string); !ok {
 				return nil, fmt.Errorf("%s.name must be a string", varName)
@@ -400,9 +402,8 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 
 	}
 
-	// TODO simplify implicit inheritance, this is janky
-	// if Path is empty string
-	if link.Path == "" {
+	// if Path is empty string and Value has not been explicitly assigned
+	if link.Path == "" && link.Value == nil {
 		return nil, fmt.Errorf("%s does not have a value assigned or %s.path defined", varName, varName)
 	}
 
