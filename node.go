@@ -37,7 +37,7 @@ func NewGoTemplateToStr(node *yaml.Node) {
 	*node = *templateNode.inner
 }
 
-func (n *Node) Keys() []*yaml.Node {
+func (n *Node) GetKeys() []*yaml.Node {
 	var keys []*yaml.Node
 	getKeys(n.inner, &keys)
 	return keys
@@ -65,18 +65,16 @@ func mappingKeys(node *yaml.Node, keys *[]*yaml.Node) {
 			getKeys(n, keys)
 		}
 	}
-	return
 }
 
 func sequenceKeys(node *yaml.Node, keys *[]*yaml.Node) {
 	for _, n := range node.Content {
 		getKeys(n, keys)
 	}
-	return
 }
 
 func (n *Node) GoTemplateToStr() {
-	keys := n.Keys()
+	keys := n.GetKeys()
 	for i, k := range keys {
 		if k.Kind == yaml.SequenceNode || k.Kind == yaml.MappingNode {
 

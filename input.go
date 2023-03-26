@@ -83,22 +83,6 @@ func envSub(b []byte, evalEnv bool, varMap map[string]string) ([]byte, error) {
 	return []byte(substBytes), nil
 }
 
-func mapSubBytes(bytes []byte, vars map[string]string) ([]byte, error) {
-	f := func(s string) string {
-		if str, ok := vars[s]; ok {
-			fmt.Println(ok)
-			return str
-		}
-		return "fAIL"
-	}
-
-	substBytes, err := envsubst.Eval(string(bytes), f)
-	if err != nil {
-		return nil, err
-	}
-	return []byte(substBytes), nil
-}
-
 // Visitor allows a query path to return the underlying value for a given visitor
 type Visitor interface {
 	SetValue(*Link) error
@@ -268,7 +252,7 @@ func (vi *visitor) SetValue(link *Link) (err error) {
 		if err != nil {
 			NewGoTemplateToStr(node)
 			if err = node.Decode(&cachedMap); err != nil {
-				errors.Wrap(err, "node.Decode")
+				err = errors.Wrap(err, "node.Decode")
 			}
 		}
 	case rJSON, rYAML, rTOML:

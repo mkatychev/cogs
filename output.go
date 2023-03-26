@@ -40,7 +40,7 @@ func marshalComplexValue(v interface{}, inputType Format) (output string, err er
 
 func Keys[K comparable, V any](m map[K]V) []K {
 	var keys []K
-	for k, _ := range m {
+	for k := range m {
 		keys = append(keys, k)
 	}
 	return keys
