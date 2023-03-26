@@ -80,8 +80,9 @@ func TestGenerate(t *testing.T) {
 			if err != nil {
 				t.Errorf("toml.Load: %s", err)
 			}
+			gear := &testGear{Name: tc.env, tree: tree}
 			cogName := tree.Get("name").(string)
-			config, err := generate(tc.env, tree, &testGear{Name: tc.env})
+			config, err := generate(tc.env, gear)
 			// TODO implement (err cogError) Unwrap() error { return err.err } so that "%w" directive is used
 			if diff := cmp.Diff(fmt.Errorf("%s", tc.err), fmt.Errorf("%s", err), AllowUnexported); diff != "" {
 				t.Errorf("toml[%s], env[%s]: (-expected err +actual err)\n-%s", cogName, tc.env, diff)
@@ -135,11 +136,16 @@ enc_var.path = ["./path.enc", ".subpath"]
 type testGear struct {
 	Name    string
 	linkMap map[string]*Link
+	tree    *toml.Tree
 }
 
 // SetName sets the gear name to the provided string
 func (g *testGear) SetName(name string) {
 	g.Name = name
+}
+
+func (g *testGear) GetTree() *toml.Tree {
+	return g.tree
 }
 
 // ResolveMap is used to satisfy the Generator interface

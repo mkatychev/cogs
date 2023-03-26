@@ -4,7 +4,7 @@ name = "read_types example"
 # a manifest that holds data encoded in multiple formats at once
 [kustomize]
 # the <ctx>.path is defined as a file path in index 0, and an object path in index 1:
-# try running the yq v4 command below to see how the path propety is used:
+# try running the yq v4 command below to see how the path property is used:
 # `yq eval '.configMapGenerator.[0].literals' ./test_files/kustomization.yaml`
 path = ["../test_files/kustomization.yaml", ".configMapGenerator.[0].literals"]
 # a default deserialization path to be inherited can be defined under <ctx>.path

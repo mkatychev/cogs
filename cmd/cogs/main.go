@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/mkatychev/cogs"
 	"github.com/pelletier/go-toml"
+	"github.com/pkg/errors"
 	"github.com/stoewer/go-strcase"
 	logging "gopkg.in/op/go-logging.v1"
 	"gopkg.in/yaml.v3"
@@ -60,7 +61,7 @@ var conf Conf
 func main() {
 	err := run()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintf(os.Stderr, "%+v\n", errors.Cause(err))
 		os.Exit(1)
 	}
 }
@@ -120,6 +121,9 @@ func run() error {
 		case cogs.YAML:
 			b, err = yaml.Marshal(cfgMap)
 			output = string(b)
+			if cogs.GoTemplateDelimPresent {
+				output = cogs.StripGoTemplateDelim(output)
+			}
 		case cogs.TOML:
 			b, err = toml.Marshal(cfgMap)
 			output = string(b)

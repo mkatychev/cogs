@@ -46,22 +46,41 @@ func readFile(filePath string) ([]byte, error) {
 
 // envSubBytes returns a TOML string with environmental substitution applied, call tldr for more:
 // $ tldr envsubst
-func envSubBytes(bytes []byte) ([]byte, error) {
-	substEnv, err := envsubst.EvalEnv(string(bytes))
+func envSub(b []byte, evalEnv bool, varMap map[string]string) ([]byte, error) {
+	if evalEnv && varMap != nil {
+		// apply envsubst to varMap first
+		newVarMap := make(map[string]string)
+		for k, v := range varMap {
+			newK, err := envsubst.EvalEnv(k)
+			if err != nil {
+				return nil, err
+			}
+			newV, err := envsubst.EvalEnv(v)
+			if err != nil {
+				return nil, err
+			}
+			newVarMap[newK] = newV
+		}
+		varMap = newVarMap
+	}
+
+	f := func(s string) string {
+		if varMap != nil {
+			if str, ok := varMap[s]; ok {
+				return str
+			}
+		}
+		if evalEnv {
+			return os.Getenv(s)
+		}
+		return ""
+	}
+
+	substBytes, err := envsubst.Eval(string(b), f)
 	if err != nil {
 		return nil, err
 	}
-	return []byte(substEnv), nil
-}
-
-// kindStr maps the yaml node types to strings for error messaging
-var kindStr = map[yaml.Kind]string{
-	0:                 "None",
-	yaml.DocumentNode: "DocumentNode",
-	yaml.SequenceNode: "SequenceNode",
-	yaml.MappingNode:  "MappingNode",
-	yaml.ScalarNode:   "ScalarNode",
-	yaml.AliasNode:    "AliasNode",
+	return []byte(substBytes), nil
 }
 
 // Visitor allows a query path to return the underlying value for a given visitor
@@ -164,6 +183,11 @@ func (vi *visitor) getLink(link *Link, searchMap map[string]interface{}) (interf
 	if value, ok := searchMap[link.SearchName]; ok {
 		return value, ok
 	}
+
+	// check for existence of default value
+	if link.Value != nil {
+		return link.Value, true
+	}
 	// link is unable to be found in the searchMap at this point
 	subPath := "."
 	if link.SubPath != "" {
@@ -224,13 +248,19 @@ func (vi *visitor) SetValue(link *Link) (err error) {
 	// 4. traverse node based on read type
 	switch link.readType {
 	case deferred:
-		err = node.Decode(cachedMap)
+		err = node.Decode(&cachedMap)
+		if err != nil {
+			NewGoTemplateToStr(node)
+			if err = node.Decode(&cachedMap); err != nil {
+				err = errors.Wrap(err, "node.Decode")
+			}
+		}
 	case rJSON, rYAML, rTOML:
 		err = visitMap(cachedMap, node, link.readType)
 	case rDotenv:
 		err = visitDotenv(cachedMap, node)
 	default:
-		err = fmt.Errorf("unsupported readType: %s", link.readType)
+		err = errors.Errorf("unsupported readType: %s", link.readType)
 	}
 	if err != nil {
 		return errors.Wrap(err, "SetValue")
@@ -278,7 +308,7 @@ func (vi *visitor) visitComplex(link *Link) (err error) {
 	switch link.readType {
 	case rWhole:
 		err = node.Decode(&i)
-	case rJSONComplex, rTOMLComplex:
+	case rJSONComplex, rYAMLComplex, rTOMLComplex:
 		i = make(map[string]interface{})
 		err = visitComplex(i.(map[string]interface{}), node, link.readType)
 	default:
@@ -294,9 +324,10 @@ func (vi *visitor) visitComplex(link *Link) (err error) {
 }
 
 func (vi *visitor) get(subPath string) (*yaml.Node, error) {
+	yqlib.InitExpressionParser()
 	list, err := vi.evaluator.EvaluateNodes(subPath, vi.rootNode)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "yqlib.EvaluateNodes")
 	}
 	nodes := []*yqlib.CandidateNode{}
 	for el := list.Front(); el != nil; el = el.Next() {
@@ -304,8 +335,11 @@ func (vi *visitor) get(subPath string) (*yaml.Node, error) {
 		nodes = append(nodes, n)
 	}
 	// should only match a single node
-	if len(nodes) != 1 {
+	switch {
+	case len(nodes) > 1:
 		return nil, fmt.Errorf("returned non singular result for path '%s'", subPath)
+	case len(nodes) == 0:
+		return nil, fmt.Errorf("returned empty result for path '%s'", subPath)
 	}
 	return nodes[0].Node, nil
 }
@@ -341,7 +375,7 @@ func visitMap(cache map[string]interface{}, node *yaml.Node, rType ReadType) err
 	if err := node.Decode(&strEnv); err != nil {
 		var sliceEnv []string
 		if err := node.Decode(&sliceEnv); err != nil {
-			return fmt.Errorf("unable to decode node kind: %s to flat JSON format", kindStr[node.Kind])
+			return fmt.Errorf("unable to decode node kind: %s to flat map format", kindStr[node.Kind])
 		}
 		strEnv = strings.Join(sliceEnv, "\n")
 	}
@@ -357,9 +391,16 @@ func visitComplex(cache map[string]interface{}, node *yaml.Node, rType ReadType)
 		return nil
 	}
 
+	// handle potential goTemplate here
+	// TODO unify visitMap and visitComplex NewGoTemplateToStr calls
+	NewGoTemplateToStr(node)
+	if err := node.Decode(&cache); err == nil {
+		return nil
+	}
+
 	var strEnv string
 	if err := node.Decode(&strEnv); err != nil {
-		return fmt.Errorf("unable to decode node kind: %s to complex JSON format: %w", kindStr[node.Kind], err)
+		return fmt.Errorf("unable to decode node kind: %s to complex map format: %w", kindStr[node.Kind], err)
 	}
 	unmarshal, err := rType.getUnmarshal()
 	if err != nil {

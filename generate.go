@@ -3,13 +3,10 @@ package cogs
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"path"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pelletier/go-toml"
 	"github.com/pkg/errors"
-	"go.uber.org/multierr"
 )
 
 // NoEnc decides whether to handle encrypted variables
@@ -38,15 +35,49 @@ type Link struct {
 	KeyName    string      // the key name defined in the context file
 	SearchName string      // same as keyName unless redefined using the `name` key: var.name="other_name"
 	Value      interface{} // Holds a complex or simple value for the given Link
-	Path       string      // filepath string where Link can be resolved
-	SubPath    string      // object traversal string used to resolve Link if not at top level of document (yq syntax)
-	encrypted  bool        // indicates if decryption is needed to resolve Link.Value
-	remote     bool        // indicates if an HTTP request is needed to return the given document
-	header     http.Header // HTTP request headers
-	method     string      // HTTP request method
-	body       string      // HTTP request body
-	keys       []string    // key filter for Gear read types
-	readType   ReadType
+	// defaultValue interface{} // default value if key is missing
+	Path      string      // filepath string where Link can be resolved
+	SubPath   string      // object traversal string used to resolve Link if not at top level of document (yq syntax)
+	encrypted bool        // indicates if decryption is needed to resolve Link.Value
+	remote    bool        // indicates if an HTTP request is needed to return the given document
+	header    http.Header // HTTP request headers
+	method    string      // HTTP request method
+	body      string      // HTTP request body
+	aliases   []string    // additional key names that map to the same value
+	readType  ReadType
+	// keys       []string    // key filter for Gear read types
+}
+
+// GearFilter is used to filter link maps when read type is gear
+func (c *Link) GearFilter(linkMap map[string]*Link) (map[string]*Link, error) {
+	var ok bool
+	filteredMap := make(map[string]*Link)
+
+	if filteredMap[c.SearchName], ok = linkMap[c.SearchName]; !ok {
+		return nil, errors.Errorf("Link.name: %q is not present in the provided gear map", c.SearchName)
+	}
+	// if keys == nil || len(keys) == 0 {
+	//     return linkMap, nil
+	// }
+	// for k, _ := range linkMap {
+	//     if !InList(k, keys) {
+	//         delete(linkMap, k)
+	//     }
+	// }
+	return linkMap, nil
+}
+
+// ensure Link.aliases strings do not exist as preexisting key entries
+func (c *Link) validateAliases(linkMap map[string]*Link) error {
+	for i, alias := range c.aliases {
+		if _, ok := linkMap[alias]; ok {
+			return fmt.Errorf("%s.aliases[%d]: key %q already present in ctx", c.KeyName, i, alias)
+		}
+		aliasLink := *c
+		aliasLink.KeyName = alias
+		linkMap[alias] = &aliasLink
+	}
+	return nil
 }
 
 // distinctPath returns the Link properties needed to differentiate Links with identical paths
@@ -89,7 +120,7 @@ func Join(cfgs ...*CfgMap) (CfgMap, error) {
 	for _, cfg := range cfgs {
 		for k, v := range *cfg {
 			if _, ok := c[k]; ok {
-				return nil, fmt.Errorf("duplicate key found in two contexts: %s", k)
+				return nil, fmt.Errorf("duplicate key found in two contexts: %q", k)
 			}
 			c[k] = v
 		}
@@ -105,174 +136,11 @@ type LinkFilter func(map[string]*Link) (map[string]*Link, error)
 type Resolver interface {
 	ResolveMap(baseContext) (CfgMap, error)
 	SetName(string)
-}
-
-// Gear represents one of the contexts in a cog manifest.
-// The term "gear" is used to refer to the operating state of a machine (similar
-// to how a microservice can operate locally or in a remote environment)
-// rather than a gear object. The term "switching gears" is an apt representation
-// of how one Cog manifest file can have many contexts/environments
-type Gear struct {
-	Name       string
-	linkMap    map[string]*Link // unresolved links: map["var_name"]*Link{Value: nil}
-	filePath   string           // filepath of file.cog.toml
-	fileValue  []byte           // byte representation of TOML file
-	tree       *toml.Tree       // TOML object tree
-	outputType Format           // desired output type of the marshalled Gear
-	recursions uint             // the amount of recursions for the current Gear
-	filter     LinkFilter
-}
-
-// SetName sets the gear name to the provided string
-func (g *Gear) SetName(name string) {
-	g.Name = name
-}
-
-// ResolveMap outputs the flat associative string, resolving potential filepath pointers
-// held by Link objects by calling the .SetValue() method
-func (g *Gear) ResolveMap(ctx baseContext) (CfgMap, error) {
-	var err error
-
-	if g.linkMap, err = parseCtx(ctx); err != nil {
-		return nil, err
-	}
-	if g.linkMap, err = g.filter(g.linkMap); err != nil {
-		return nil, err
-	}
-
-	// includes Link objects with a direct file and an empty SubPath:
-	// ex: var.path = "./path"
-	// ---
-	// as well as Link objects with SubPaths present:
-	// ex: var.path = ["./path", ".subpath"]
-	// ---
-
-	type PathGroup struct {
-		loadFile func(filePath string) ([]byte, error)
-		links    []*Link
-	}
-
-	pathGroups := make(map[distinctPath]*PathGroup)
-
-	// 1. sort Links by Path
-	for _, link := range g.linkMap {
-		if link.Path == "" {
-			continue
-		}
-
-		if _, ok := pathGroups[link.distinctPath()]; !ok {
-			// read plaintext file into bytes
-			loadFile := readFile
-			switch {
-			case link.remote:
-				// must explicitly define variables
-				// or previous link values will bleed into loadFile func
-				header := link.header
-				method := link.method
-				body := link.body
-
-				if link.encrypted {
-					loadFile = func(path string) ([]byte, error) {
-						return decryptHTTPFile(path, header, method, body)
-					}
-				} else {
-					loadFile = func(path string) ([]byte, error) {
-						return requestHTTPFile(path, header, method, body)
-					}
-				}
-			case link.encrypted:
-				loadFile = decryptFile
-			}
-			pathGroups[link.distinctPath()] = &PathGroup{loadFile: loadFile, links: []*Link{}}
-		}
-		pathGroups[link.distinctPath()].links = append(pathGroups[link.distinctPath()].links, link)
-	}
-
-	var errs error
-	for p, pGroup := range pathGroups {
-		var fileBuf []byte
-		// 2. for each distinct Path: generate a Reader object
-		linkFilePath := g.getLinkFilePath(p.path)
-		// if link.Path references the cog file, return the already read (and envsubst applied) value
-		if p.path == selfPath {
-			fileBuf = g.fileValue
-		} else if fileBuf, err = pGroup.loadFile(linkFilePath); err != nil {
-			if os.IsNotExist(err) {
-				errs = multierr.Append(errs, err)
-				continue
-			}
-			return nil, err
-		}
-
-		newVisitor := NewYAMLVisitor
-		// 3. create visitor to handle SubPath strings
-		// all read files should resolve to a yaml.Node, this includes JSON, TOML, and dotenv
-		switch FormatForPath(linkFilePath) {
-		case JSON:
-			newVisitor = NewJSONVisitor
-		case YAML:
-			newVisitor = NewYAMLVisitor
-		case TOML:
-			newVisitor = NewTOMLVisitor
-		case Dotenv:
-			newVisitor = NewDotenvVisitor
-		}
-		visitor, err := newVisitor(fileBuf)
-		if err != nil {
-			return nil, err
-		}
-
-		// 4. traverse every Path and possible SubPath retrieving the Link.Values associated with it
-		for _, link := range pGroup.links {
-			// no visitor is needed for a raw input
-			if link.readType == rRaw {
-				link.Value = string(fileBuf)
-				continue
-			}
-			if err := visitor.SetValue(link); err != nil {
-				return nil, errors.Wrap(err, link.KeyName)
-			}
-
-		}
-
-		// 5. add missing links to errs
-		if visitorErrs := visitor.Errors(); visitorErrs != nil {
-			errs = multierr.Append(errs, multierr.Combine(visitorErrs...))
-		}
-	}
-
-	// The returned error formats into a readable multi-line error message if formatted with %+v.
-	if errs != nil {
-		return nil, fmt.Errorf("%+v", errs)
-	}
-
-	// final output
-	cfgOut := make(CfgMap)
-	for key, link := range g.linkMap {
-		cfgOut[key], err = OutputCfg(link, g.outputType)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return cfgOut, nil
-
-}
-
-func (g *Gear) getLinkFilePath(linkPath string) string {
-	if linkPath == selfPath {
-		return g.filePath
-	}
-	if path.IsAbs(linkPath) || isValidURL(linkPath) {
-		return linkPath
-	}
-	dir := path.Dir(g.filePath)
-	return path.Join(dir, linkPath)
+	GetTree() *toml.Tree
 }
 
 // Generate is a top level command that takes an context name argument and cog file path to return a string map
 func Generate(ctxName, cogPath string, outputType Format, filter LinkFilter) (CfgMap, error) {
-	var tree *toml.Tree
 	var err error
 
 	if err = outputType.Validate(); err != nil {
@@ -284,55 +152,48 @@ func Generate(ctxName, cogPath string, outputType Format, filter LinkFilter) (Cf
 		return nil, err
 	}
 
-	if EnvSubst {
-		if b, err = envSubBytes(b); err != nil {
-			return nil, err
-		}
-	}
-	if tree, err = toml.LoadBytes(b); err != nil {
+	gear, err := initGear(b, EnvSubst)
+	if err != nil {
 		return nil, err
 	}
-	gear := &Gear{
-		filePath:   cogPath,
-		fileValue:  b,
-		tree:       tree,
-		outputType: outputType,
-		recursions: 0,
-		filter:     filter,
+
+	gear.filePath = cogPath
+	gear.outputType = outputType
+	gear.recursions = 0
+	gear.filter = filter
+	cfgMap, err := generate(ctxName, gear)
+	if err != nil {
+		return nil, err
 	}
-	return generate(ctxName, tree, gear)
+
+	return cfgMap, nil
 
 }
 
-func generate(ctxName string, tree *toml.Tree, gear Resolver) (CfgMap, error) {
+func generate(ctxName string, gear Resolver) (CfgMap, error) {
 	var err error
 	var ctx baseContext
 
-	name, ok := tree.Get("name").(string)
-	if !ok {
-		return nil, fmt.Errorf("manifest.name string value must be present as a non-empty string")
-	}
-	gear.SetName(name)
-
-	ctxTree, ok := tree.Get(ctxName).(*toml.Tree)
+	table, ok := gear.GetTree().Get(ctxName).(*toml.Tree)
 	if !ok {
 		// TODO  ErrMissingContext = errorW{fmt:"%s: %s context missing from cog file"}
-		errMsg := fmt.Sprintf("%s context missing from cog file", ctxName)
+		errMsg := fmt.Sprintf("%q context missing from cog file", ctxName)
 		if g, ok := gear.(*Gear); ok {
 			errMsg = g.filePath + ": " + errMsg
 		}
 		return nil, errors.New(errMsg)
 	}
+	gear.SetName(ctxName)
 
-	var ctxMap map[string]interface{}
-	if err := ctxTree.Unmarshal(&ctxMap); err != nil {
+	var tableMap map[string]interface{}
+	if err := table.Unmarshal(&tableMap); err != nil {
 		return nil, err
 	}
 
-	if err = mapstructure.Decode(ctxMap, &ctx); err != nil {
+	if err = mapstructure.Decode(tableMap, &ctx); err != nil {
 		return nil, fmt.Errorf("generate context: %w", err)
 	}
-
+	ctx.Name = ctxName
 	genOut, err := gear.ResolveMap(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ctxName, err)
@@ -346,10 +207,10 @@ func parseCtx(ctx baseContext) (linkMap map[string]*Link, err error) {
 	linkMap = make(map[string]*Link)
 
 	// skip fetching encrypted vars if flag is toggled
-	if !NoEnc {
+	if !NoEnc && ctx.Enc.Vars != nil {
 		err = decodeEncVars(linkMap, ctx.Enc)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, ctx.Name)
 		}
 	}
 
@@ -362,38 +223,44 @@ func parseCtx(ctx baseContext) (linkMap map[string]*Link, err error) {
 
 // baseContext is the struct that maps to the TOML table's ctx name
 type baseContext struct {
-	Path     interface{} `mapstructure:",omitempty"`
-	ReadType string      `mapstructure:"type,omitempty"`
-	Name     string      `mapstructure:",omitempty"`
-	Vars     CfgMap      `mapstructure:",omitempty"`
-	Enc      context     `mapstructure:",omitempty"`
-	Header   interface{} `mapstructure:",omitempty"`
-	Method   string      `mapstructure:",omitempty"`
-	Body     string      `mapstructure:",omitempty"`
+	Name string
+
+	// config maps
+	Vars CfgMap  `mapstructure:",omitempty"`
+	Enc  context `mapstructure:",omitempty"`
+	// inheritable
+	SearchName string      `mapstructure:"name,omitempty"`
+	Path       interface{} `mapstructure:",omitempty"`
+	ReadType   string      `mapstructure:"type,omitempty"`
+	Header     interface{} `mapstructure:",omitempty"`
+	Method     string      `mapstructure:",omitempty"`
+	Body       string      `mapstructure:",omitempty"`
 }
 
 // toContext returns the unencrypted context properties ignoring baseContext.Enc
 func (b baseContext) toContext() context {
 	return context{
-		Path:     b.Path,
-		ReadType: b.ReadType,
-		Name:     b.Name,
-		Vars:     b.Vars,
-		Header:   b.Header,
-		Method:   b.Method,
-		Body:     b.Body,
+		Name:       b.Name,
+		Path:       b.Path,
+		ReadType:   b.ReadType,
+		SearchName: b.SearchName,
+		Vars:       b.Vars,
+		Header:     b.Header,
+		Method:     b.Method,
+		Body:       b.Body,
 	}
 }
 
 // context is a struct meant to represent both encrypted and plaintext sections of a baseContext
 type context struct {
-	Path     interface{} `mapstructure:",omitempty"`
-	ReadType string      `mapstructure:"type,omitempty"`
-	Name     string      `mapstructure:",omitempty"`
-	Vars     CfgMap      `mapstructure:",omitempty"`
-	Header   interface{} `mapstructure:",omitempty"`
-	Method   string      `mapstructure:",omitempty"`
-	Body     string      `mapstructure:",omitempty"`
+	Name       string
+	Path       interface{} `mapstructure:",omitempty"`
+	ReadType   string      `mapstructure:"type,omitempty"`
+	SearchName string      `mapstructure:"name,omitempty"`
+	Vars       CfgMap      `mapstructure:",omitempty"`
+	Header     interface{} `mapstructure:",omitempty"`
+	Method     string      `mapstructure:",omitempty"`
+	Body       string      `mapstructure:",omitempty"`
 }
 
 func decodeVars(linkMap map[string]*Link, ctx context) error {
@@ -410,7 +277,7 @@ func decodeVars(linkMap map[string]*Link, ctx context) error {
 	// baseContext globals
 	// -------------------
 	// name
-	baseLink.SearchName = ctx.Name
+	baseLink.SearchName = ctx.SearchName
 	// type
 	baseLink.readType = ReadType(ctx.ReadType)
 	if err := baseLink.readType.Validate(); err != nil {
@@ -419,7 +286,7 @@ func decodeVars(linkMap map[string]*Link, ctx context) error {
 	// HTTP header
 	if ctx.Header != nil {
 		if baseLink.header, err = parseHeader(ctx.Header); err != nil {
-			return errors.Wrap(err, ctx.Name)
+			return err
 		}
 	}
 	// HTTP method
@@ -443,6 +310,15 @@ func decodeVars(linkMap map[string]*Link, ctx context) error {
 			}
 		} else {
 			return fmt.Errorf("%s: %T is an unsupported type", k, v)
+		}
+	}
+
+	// invalid/duplicate alias name should always propagate from the Link.alias field
+	// rather thank from a `_, ok := linkMap[k]` check so that the alias index can
+	// be provided in the error message
+	for _, k := range Keys(linkMap) {
+		if err = linkMap[k].validateAliases(linkMap); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -473,6 +349,8 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 
 	for k, v := range rawLink {
 		switch k {
+		case "value":
+			link.Value = v
 		case "name":
 			if link.SearchName, ok = v.(string); !ok {
 				return nil, fmt.Errorf("%s.name must be a string", varName)
@@ -491,22 +369,19 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 			if err := link.readType.Validate(); err != nil {
 				return nil, fmt.Errorf("%s.type: %w", varName, err)
 			}
-		case "gear_keys":
-			keysErr := fmt.Errorf("%s.keys must be a string or array of strings", varName)
-			link.keys = []string{}
+		case "aliases":
+			aliasErr := fmt.Errorf("%s.aliases must be an array of strings", varName)
 			slice, ok := v.([]interface{})
 			if !ok {
-				return nil, keysErr
+				return nil, aliasErr
 			}
 			for _, v := range slice {
 				str, ok := v.(string)
 				if !ok {
-					return nil, keysErr
+					return nil, aliasErr
 				}
-				link.keys = append(link.keys, str)
-
+				link.aliases = append(link.aliases, str)
 			}
-			panic("rGear unsupported at this time")
 		case "header": // "net/http".Header is of type Header map[string][]string
 			if link.header, err = parseHeader(v); err != nil {
 				return nil, errors.Wrapf(err, "%s.header", varName)
@@ -528,9 +403,8 @@ func parseLink(varName string, baseLink *Link, rawLink map[string]interface{}) (
 
 	}
 
-	// TODO simplify implicit inheritance, this is janky
-	// if Path is empty string
-	if link.Path == "" {
+	// if Path is empty string and Value has not been explicitly assigned
+	if link.Path == "" && link.Value == nil {
 		return nil, fmt.Errorf("%s does not have a value assigned or %s.path defined", varName, varName)
 	}
 

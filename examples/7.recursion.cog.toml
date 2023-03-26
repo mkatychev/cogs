@@ -1,0 +1,17 @@
+name = "recursion_example"
+
+[env]
+HOP = "first_hop"
+
+[first_hop.vars]
+var.path = [".", ".second_hop.vars"]
+
+[second_hop.vars]
+var = "second_hop_value"
+
+[recursive.vars]
+var = {path = [".", "${HOP}"], type = "gear", aliases = ["var1", "var2", "var3"]}
+
+[recursive2.vars]
+var1.path = ["3.secrets.cog.toml", "sops"]
+var1.type = "gear"

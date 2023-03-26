@@ -141,7 +141,7 @@ then read the file to see how the underlying logic is used.
 
 ## Notes and references:
 
-`envsubst` warning: make sure that any environmental substition declarations allow a file to be parsed as TOML without the usage of the `--envsubst` flag:
+`envsubst` warning: make sure that any environmental substitution declarations allow a file to be parsed as TOML without the usage of the `--envsubst` flag:
 ```toml
 # valid envsubst definitions can be placed anywhere string values are valid
 ["${ENV}".vars]
